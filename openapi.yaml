@@ -1,0 +1,2764 @@
+openapi: 3.1.0
+info:
+    description: |
+        This is documentation for SocialBu API
+        [http://socialbu.com](http://socialbu.com).
+    version: "1.0.0"
+    title: SocialBu API
+    termsOfService: 'https://socialbu.com/about/terms'
+    contact:
+        email: support@socialbu.com
+servers:
+    - description: SocialBu API
+      url: https://socialbu.com/api/v1
+tags:
+    - name: Authentication
+      description: Authenticate api requests
+    - name: Posts
+      description: Manage your posts
+    - name: Media Upload
+      description: |
+        Upload media files to your posts.
+          
+        It involves a three-step process:
+          1. Get a signed URL for direct media upload to SocialBu's storage using `POST /upload_media`.
+          2. Use the signed_url from Step 1 to upload your actual file (video/image) directly to SocialBu’s storage.
+          3. Once the file is uploaded, confirm its status using the media key returned in Step 1 via `/upload_media/status`.
+          
+        Now that the media is uploaded and verified, you can attach this file to your post using the upload_token recieved in Step 3.
+    - name: Accounts
+      description: Manage your social accounts
+    - name: Team
+      description: Manage your teams
+    - name: Content Generation
+      description: Generate content using AI
+    - name: Curation
+      description: Access curated content.
+    - name: Insights
+      description: Get valuable insights about your account's content.
+    - name: Notifications
+      description: Manage your notifications.
+
+security:
+    - bearerAuth: []
+
+components:
+    securitySchemes:
+        bearerAuth:
+            type: http
+            scheme: bearer
+            bearerFormat: JWT
+    schemas:
+        GenericPostRequest:
+          type: object
+          required:
+            - accounts
+            - publish_at
+          properties:
+            accounts:
+              type: array
+              description: ID(s) of one or more social media accounts.
+              items:
+                type: integer
+            team_id:
+              type: integer
+              description: Team Id of social media account.
+            publish_at:
+              type: string
+              example: "2025-04-14 15:30:00"
+              description: Format should be Y-m-d H:i:s (UTC)
+            content:
+              type: string
+              description: The content for the post.
+            draft:
+                type: boolean
+                description: Save the post as a draft
+            queue_ids:
+                type: array
+                description: If provided, the post will be added to the specified queues.
+                items:
+                    type: integer
+            existing_attachments:
+              type: array
+              description: Attachments already uploaded to SocialBu's storage using media upload endpoint.
+              items:
+                type: object
+                properties:
+                    upload_token:
+                        type: string
+                        description: The value received from /upload_media/status endpoint.
+            postback_url:
+                type: string
+                description: Receive postback at this URL if needed. Sends a JSON POST request with parameters `post_id`, `account_id`, and `status` (created, published, failed).
+
+        ThreadedReplies:
+            type: array
+            description: Threaded replies (thread posts). Each reply can have text and/or media.
+            items:
+                type: object
+                description: A single threaded reply (text and/or media).
+                properties:
+                    text:
+                        type: string
+                        description: The text content of the threaded reply.
+                    existing_attachments:
+                        type: array
+                        description: Attachments already uploaded to SocialBu's storage using media upload endpoint.
+                        items:
+                            type: object
+                            required:
+                                - upload_token
+                            properties:
+                                upload_token:
+                                    type: string
+                                    description: The value received from /upload_media/status endpoint.
+
+        FacebookPostRequest:
+            allOf:
+                - $ref: '#/components/schemas/GenericPostRequest'
+                - type: object
+                  properties:
+                    options:
+                        type: object
+                        description: Additional options for the post.
+                        properties:
+                            comment:
+                                type: string
+                                description: First comment for the post
+                            post_as_story:
+                                type: boolean
+                                description: Set true to post the content as a story. Supported for posts having media attachment(s)
+                            post_as_reel:
+                                type: boolean
+                                description: Set true to post the content as a reel. Supported for video posts only
+                            video_title: 
+                                type: string
+                                description: Title for video attachment
+                            media_alt_text:
+                                type: array
+                                description: Alternate text descriptions for each media item in the post.
+                                items: 
+                                    type: string
+                            thumbnail:
+                                type: object
+                                description: Add thumbnail (video post only)
+                                properties:
+                                    name:
+                                        type: string
+                                        description: File name (e.g., "image.png").
+                                    mimeType:
+                                        type: string
+                                        description: MIME type of the media (e.g., "image/png").
+                                    extension:
+                                        type: string
+                                        description: File extension (e.g., png, mp4).
+                                    key:
+                                        type: string
+                                        description: Media key, received when uploading media using media upload endpoint.
+                                    url:
+                                        type: string
+                                        description: Media URL, received when uploading media using media upload endpoint.
+                                    secureKey:
+                                        type: string
+                                        description: Media secure key, received when uploading media using media upload endpoint.
+                                    temporary:
+                                        type: boolean
+                                        description: Media status, received when uploading media using media upload endpoint.
+                                    _metaData:
+                                        type: object
+                                        description: Information about media.
+                                        properties:
+                                            width:
+                                                type: integer
+                                                description: Width of the media.
+                                            height:
+                                                type: integer
+                                                description: Height of the media.
+                            
+
+        InstagramPostRequest:
+            allOf:
+                - $ref: '#/components/schemas/GenericPostRequest'
+                - type: object
+                  properties:
+                    options:
+                        type: object
+                        description: Additional options for the post.
+                        properties:
+                            post_as_story:
+                                type: boolean
+                                description: Set true to post the content as a story. Supported for posts having a media attachment
+                            share_reel_to_feed:
+                                type: boolean
+                                description: Set true to share the reel to feed. Supported when posting a reel (video)
+                            comment:
+                                type: string
+                                description: First comment for the post
+                            media_alt_text:
+                                type: array
+                                description: Alternate text descriptions for each media item in the post.
+                                items: 
+                                    type: string
+                            thumbnail:
+                                type: object
+                                description: Add thumbnail (video post only)
+                                properties:
+                                    name:
+                                        type: string
+                                        description: File name (e.g., "image.png").
+                                    mimeType:
+                                        type: string
+                                        description: MIME type of the media (e.g., "image/png").
+                                    extension:
+                                        type: string
+                                        description: File extension (e.g., png, mp4).
+                                    key:
+                                        type: string
+                                        description: Media key, received when uploading media using media upload endpoint.
+                                    url:
+                                        type: string
+                                        description: Media URL, received when uploading media using media upload endpoint.
+                                    secureKey:
+                                        type: string
+                                        description: Media secure key, received when uploading media using media upload endpoint.
+                                    temporary:
+                                        type: boolean
+                                        description: Media status, received when uploading media using media upload endpoint.
+                                    _metaData:
+                                        type: object
+                                        description: Information about media.
+                                        properties:
+                                            width:
+                                                type: integer
+                                                description: Width of the media.
+                                            height:
+                                                type: integer
+                                                description: Height of the media.
+
+        ThreadsPostRequest:
+            allOf:
+                - $ref: '#/components/schemas/GenericPostRequest'
+                - type: object
+                  properties:
+                      options:
+                          type: object
+                          description: Additional options for the post.
+                          properties:
+                              reply_control:
+                                  type: string
+                                  description: Who can reply to the post.
+                                  enum:
+                                    - everyone
+                                    - accounts_you_follow
+                                    - mentioned_only
+                              threaded_replies:
+                                  $ref: '#/components/schemas/ThreadedReplies'
+
+
+        XPostRequest:
+            allOf:
+                - $ref: '#/components/schemas/GenericPostRequest'
+                - type: object
+                  properties:
+                      options:
+                          type: object
+                          description: Additional options for the post.
+                          properties:
+                              media_alt_text:
+                                  type: array
+                                  description: Alternate text descriptions for each media item in the post.
+                                  items:
+                                      type: string
+                                      
+                              threaded_replies:
+                                  $ref: '#/components/schemas/ThreadedReplies'
+
+
+        LinkedinPostRequest:
+            allOf:
+                - $ref: '#/components/schemas/GenericPostRequest'
+                - type: object
+                  properties:
+                      options:
+                          type: object
+                          required:
+                            - document_title
+                          description: Additional options for the post.
+                          properties:
+                              link:
+                                  type: string
+                                  description: Link for the post.
+                              trim_link_from_content:
+                                  type: boolean
+                                  description: Trim the link from the content.
+                              customize_link:
+                                  type: boolean
+                                  description: Set to true, if you want to custimze the link.
+                              link_description:
+                                  type: string
+                                  description: Set custom link description when customize_link is set to true.
+                              link_title:
+                                  type: string
+                                  description: Set custom link title when customize_link is set to true.
+                              media_alt_text:
+                                type: array
+                                description: Alternate text descriptions for each media item in the post.
+                                items: 
+                                    type: string
+                              thumbnail:
+                                  type: object
+                                  description: Add thumbnail. Supported for posts having video attachment.
+                                  properties:
+                                    name:
+                                        type: string
+                                        description: File name (e.g., "image.png").
+                                    mimeType:
+                                        type: string
+                                        description: MIME type of the media (e.g., "image/png").
+                                    extension:
+                                        type: string
+                                        description: File extension (e.g., png, mp4).
+                                    key:
+                                        type: string
+                                        description: Media key, received when uploading media using media upload endpoint.
+                                    url:
+                                        type: string
+                                        description: Media URL, received when uploading media using media upload endpoint.
+                                    secureKey:
+                                        type: string
+                                        description: Media secure key, received when uploading media using media upload endpoint.
+                                    temporary:
+                                        type: boolean
+                                        description: Media status, received when uploading media using media upload endpoint.
+                                    _metaData:
+                                        type: object
+                                        description: Information about media.
+                                        properties:
+                                            width:
+                                                type: integer
+                                                description: Width of the media.
+                                            height:
+                                                type: integer
+                                                description: Height of the media.
+                              comment:
+                                  type: string
+                                  description: First comment for the post.
+                              document_title:
+                                  type: string
+                                  description: Custom document title. Required for posts having PDF, PPT, or Doc as an attachment.
+
+
+
+        RedditPostRequest:
+            allOf:
+                - $ref: '#/components/schemas/GenericPostRequest'
+                - type: object
+                  properties:
+                      options:
+                          type: object
+                          description: Additional options for the post.
+                          required: 
+                            - 'title'
+                          properties:
+                              title:
+                                  type: string
+                                  description: Title of the post
+                              is_spoiler:
+                                  type: boolean
+                                  description: Mark the post as spoiler
+                              is_nsfw:
+                                  type: boolean
+                                  description: Mark the post as NSFW
+                              flair_id:
+                                  type: integer
+                                  description: Flair ID can be obtained from accounts' extra_data
+                              comment:
+                                  type: string
+                                  description: First comment for your post.
+
+
+
+        MastodonPostRequest:
+            allOf:
+                - $ref: '#/components/schemas/GenericPostRequest'
+                - type: object
+                  properties:
+                      options:
+                          type: object
+                          description: Additional options for the post.
+                          properties:
+                              mark_sensitive:
+                                  type: boolean
+                                  description: Mark status and attached media as sensitive
+                              spoiler:
+                                  type: string
+                                  description: Text to be shown as a warning or subject before the actual content
+                              media_alt_text:
+                                  type: array
+                                  description: Alternate text descriptions for each media item in the post.
+                                  items:
+                                    type: string
+                              threaded_replies:
+                                  $ref: '#/components/schemas/ThreadedReplies'
+
+
+        PinterestPostRequest:
+            allOf:
+                - $ref: '#/components/schemas/GenericPostRequest'
+                - type: object
+                  properties:
+                      options:
+                          type: object
+                          description: Additional options for the post.
+                          required: 
+                            - 'thumbnail'
+                            - 'board_name'
+                          properties:
+                              thumbnail:
+                                  type: object
+                                  description: Supported for posts having video attachment.
+                                  properties:
+                                      name:
+                                          type: string
+                                          description: File name (e.g., "image.png").
+                                      mimeType:
+                                          type: string
+                                          description: MIME type of the media (e.g., "image/png").
+                                      extension:
+                                          type: string
+                                          description: File type (e.g., "png")
+                                      key:
+                                          type: string
+                                          description: Media key, received when uploading media using media upload endpoint.
+                                      url:
+                                          type: string
+                                          description: Media URL, received when uploading media using media upload endpoint.
+                                      secureKey:
+                                          type: string
+                                          description: Media secure, key received when uploading media using media upload endpoint.
+                                      temporary:
+                                          type: boolean
+                                          description: Media status, received when uploading media using media upload endpoint.
+                                      _metaData:
+                                          type: object
+                                          description: Information about media.
+                                          properties:
+                                              width:
+                                                  type: integer
+                                                  description: Width of the media.
+                                              height:
+                                                  type: integer
+                                                  description: Height of the media.
+                              pin_title:
+                                  type: string
+                                  description: Title of the pin to be displayed on the board.
+                              board_name:
+                                  type: string
+                                  description: Name of the board where the pin will be saved.
+                              media_alt_text:
+                                  type: array
+                                  description: Alternate text descriptions for each media item in the post.
+                                  items:
+                                      type: string
+                              pin_link:
+                                  type: string
+                                  description: Target URL associated with the pin.
+
+
+
+        GoogleBusinessProfilePostRequest:
+            allOf:
+                - $ref: '#/components/schemas/GenericPostRequest'
+                - type: object
+                  properties:
+                      options:
+                          type: object
+                          description: Additional options for the post.
+                          properties:
+                              topic_type:
+                                  type: string
+                                  description: Set the post type `EVENT` or  `OFFER`. By default the post type is standard.
+                              event_title:
+                                  type: boolean
+                                  description: Set the event title. Required when topic_type is EVENT or OFFER
+                              event_start:
+                                  type: string
+                                  format: date-time
+                                  description: Format should be Y-m-d H:i:s, Required when topic_type is EVENT or OFFER
+                              event_end:
+                                  type: string
+                                  format: date-time
+                                  description: Format should be Y-m-d H:i:s, Required when topic_type is EVENT or OFFER
+                              offer_coupon:
+                                  type: string
+                                  description: Coupon code for offer
+                              offer_link:
+                                  type: string
+                                  description: Link where the offer can be redeemed
+                              offer_terms:
+                                  type: string
+                                  description: Rules or conditions for redeeming the offer.
+                              call_to_action:
+                                  type: string
+                                  description: a message that encourages users to take a specific action, could be `BOOK`, `ORDER`, `SHOP`, `LEARN_MORE`, `SIGN_UP`, or `CALL`
+                              call_to_action_url:
+                                  type: string
+                                  description: Link to where you want the call-to-action button to take the user.
+                              save_media_to_gallery:
+                                  type: boolean
+                                  description: Save the media in the gallery.
+
+
+
+        YoutubePostRequest:
+            allOf:
+                - $ref: '#/components/schemas/GenericPostRequest'
+                - type: object
+                  properties:
+                      options:
+                          type: object
+                          description: Additional options for the post.
+                          properties:
+                              video_title:
+                                  type: string
+                                  description: Title of video.
+                              video_tags:
+                                  type: string
+                                  description: Add tags, separated by comma.
+                              category_id:
+                                  type: integer
+                                  description: You can get the categories list from account's extra_data.
+                              privacy_status:
+                                  type: string
+                                  description: Set the video privacy (public, private, or unlisted).
+                              post_as_short:
+                                  type: boolean
+                                  description: Set true to post the video as youtube shorts.
+                              made_for_kids:
+                                  type: boolean
+                                  description: Set true to post the video as made for kids.
+                              thumbnail:
+                                  type: object
+                                  description: Supported for posts having video attachment.
+                                  properties:
+                                      name:
+                                          type: string
+                                          description: File name (e.g., "image.png").
+                                      mimeType:
+                                          type: string
+                                          description: MIME type of the media (e.g., "image/png").
+                                      extension:
+                                          type: string
+                                          description: File type (e.g., "png")
+                                      key:
+                                          type: string
+                                          description: Media key, received when uploading media using media upload endpoint.
+                                      url:
+                                          type: string
+                                          description: Media URL, received when uploading media using media upload endpoint.
+                                      secureKey:
+                                          type: string
+                                          description: Media secure, key received when uploading media using media upload endpoint.
+                                      temporary:
+                                          type: boolean
+                                          description: Media status, received when uploading media using media upload endpoint.
+                                      _metaData:
+                                          type: object
+                                          description: Information about media.
+                                          properties:
+                                              width:
+                                                  type: integer
+                                                  description: Width of the media.
+                                              height:
+                                                  type: integer
+                                                  description: Height of the media.    
+
+
+
+        TiktokPostRequest:
+            allOf:
+            - $ref: '#/components/schemas/GenericPostRequest'
+            - type: object
+              properties:
+                options: 
+                    type: object
+                    required: 
+                     - 'privacy_status'
+                    properties:
+                        title:
+                            type: string
+                            description: Title of Tiktok post.
+                        privacy_status:
+                            type: string
+                            description: Set the post privacy to one of extra_data.creator_info.privacy_level_options (found in the Account object). For example, `PUBLIC_TO_EVERYONE`.
+                        allow_stitch:
+                            type: boolean
+                            description: Set true to allow others to Stitch your video.
+                        allow_duet:
+                            type: boolean
+                            description: Set true to allow others to create Duet videos with your post.
+                        allow_comment:
+                            type: boolean
+                            description: Set true to allow comments on your post.
+                        disclose_content:
+                              type: boolean
+                              description: Set true to indicate whether this content promotes yourself, a brand, product or service
+                        branded_content:
+                              type: boolean
+                              description: Set true to indicate that you are in a paid partnership with a brand.
+                        own_brand:
+                              type: boolean
+                              description: Set true to indicate that you are promoting yourself or your own business.
+                        auto_add_music:
+                              type: boolean
+                              description: Set true to automatically add recommended music to posts.
+                        thumbnail:
+                            type: object
+                            description: Add thumbnail to the video (video post only)
+                            properties:
+                                name:
+                                    type: string
+                                    description: File name (e.g., "image.png").
+                                mimeType:
+                                    type: string
+                                    description: MIME type of the media (e.g., "image/png").
+                                extension:
+                                    type: string
+                                    description: File type (e.g., "png")
+                                key:
+                                    type: string
+                                    description: Media key, received when uploading media using media upload endpoint.
+                                url:
+                                    type: string
+                                    description: Media URL, received when uploading media using media upload endpoint.
+                                secureKey:
+                                    type: string
+                                    description: Media secure, key received when uploading media using media upload endpoint.
+                                temporary:
+                                    type: boolean
+                                    description: Media status, received when uploading media using media upload endpoint.
+                                _metaData:
+                                    type: object
+                                    properties:
+                                        width:
+                                            type: integer
+                                            description: Width of the media.
+                                        height:
+                                            type: integer
+                                            description: Height of the media.
+
+
+        BlueskyPostRequest:
+            allOf:
+                - $ref: '#/components/schemas/GenericPostRequest'
+                - type: object
+                  properties:
+                      options:
+                          type: object
+                          description: Additional options for the post.
+                          properties:
+                              media_alt_text:
+                                  type: array
+                                  description:  Alternate text descriptions for each media item in the post.
+                                  items:
+                                      type: string
+                              threaded_replies:
+                                  $ref: '#/components/schemas/ThreadedReplies'
+        Notification:
+            type: object
+            properties:
+                created_at:
+                    type: string
+                    format: date-time
+                    description: The timestamp when the notification was created.
+                id:
+                    type: string
+                    description: Unique identifier of the notification.
+                read_at:
+                    type: string
+                    format: date-time
+                    description: The timestamp when the notification was marked as read. Null if unread.
+                is_unread:
+                    type: boolean
+                    description: True if notification is unread.
+                title:
+                    type: string
+                    description: Title of the notification.
+                body:
+                    type: string
+                    description: Main body of the notification.
+                url:
+                    type: string
+                    description: A URL related to the notification.
+                level:
+                    type: string
+                    description: Priority level of the notification (e.g., info, warning, error).
+        CurationItem:
+            type: object
+            properties:
+                id:
+                    type: integer
+                    description: Unique identifier for the item.
+                feed_id:
+                    type: integer
+                    description: Identifier of the feed to which this item belongs.
+                title:
+                    type: string
+                    description: Title of the item.
+                link:
+                    type: string
+                    description:  Public URL to the original content of the item.
+                description:
+                    type: string
+                    description: Detailed description or summary of the content.
+                media:
+                    type: string
+                    description: URL to any media (e.g., image, video) associated with the item.
+                published_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp indicating when the item was published.
+                authors:
+                    type: string
+                    description: The list of authors.
+                tags:
+                    type: string
+                    description: Comma-separated list of tags associated with the item.
+                score:
+                    type: integer
+                    description: Popularity score of the feed item.                
+
+paths:
+    /auth/get_token:
+        post:
+            security:
+                - {}
+            tags:
+                - Authentication
+            summary: Get access token for authentication of requests
+            description: |
+                Generates an access token for API authentication.
+            operationId: getToken
+            responses:
+                '200':
+                    description: Access token
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    authToken:
+                                        type: string
+                                        description: New access token. Any old token will be invalidated.
+                                    id:
+                                        type: integer
+                                        description: User's Socialbu Account ID.
+                                    name:
+                                        type: string
+                                        description: User's Socialbu Account Name.
+                                    email:
+                                        type: string
+                                        description: User's Socialbu Account Email.
+                                    verified:
+                                        type: boolean
+                                        description: User's email verification status.
+                '400':
+                    description: Bad Request
+                '422':
+                    description: The given data was incorrect.
+
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            required:
+                                - email
+                                - password
+                            properties:
+                                email:
+                                    type: string
+                                    description: User's email address e.g, (user@example.com)
+                                password:
+                                    type: string
+                                    description: User's password.
+
+    /auth/logout:
+        post:
+            tags:
+                - Authentication
+            summary: Destroy current access token
+            description: Logs you out by destroying your access token.
+            operationId: logout
+            responses:
+                '200':
+                    description: Logged out successfully.
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    success:
+                                        type: boolean
+                                        description: Indicates whether logout was successful.
+                '400':
+                    description: Bad Request
+                    
+    /posts:
+        get:
+            tags:
+                - Posts
+            summary: Get scheduled or published posts
+            description: Returns a list of posts that are either scheduled or already published.
+            operationId: getPosts
+            responses:
+                '200':
+                    description: Get Posts
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    items:
+                                        type: object
+                                        description: An array of data objects (posts).
+                                    currentPage:
+                                        type: integer
+                                        description: The current page number of the paginated results.
+                                    lastPage:
+                                        type: integer
+                                        description: The last page number of the paginated results.
+                                    nextPage:
+                                        type: integer
+                                        description: The next page number, or null if this is the last page.
+                                    total:
+                                        type: integer
+                                        description: Total number of items.
+                '400':
+                    description: Bad Request
+                '422':
+                    description: The given data was invalid.
+            parameters:
+                - name: type
+                  in: query
+                  description: The type of posts you want to fetch
+                  schema:
+                      type: array
+                      items:
+                          type: string
+                          enum:
+                              - scheduled
+                              - awaiting_approval
+                              - scheduled_or_awaiting_approval
+                              - draft
+                              - published
+                          default: scheduled
+        post:
+            tags:
+                - Posts
+            summary: Create a new post.
+            description: |
+               If you want to create a post with media.
+               Check the media upload endpoint and include the `upload_token` in `existing_attachments` in the request body.
+            operationId: createPost
+            responses:
+                '200':
+                    description: New post Created.
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    success:
+                                        type: boolean
+                                        description: Indicates whether the post was created successfully.
+                                    posts:
+                                        type: array
+                                        description: An array of data objects (posts).
+
+                '422':
+                    description: The given data was invalid.
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            anyOf:
+                                - $ref: '#/components/schemas/FacebookPostRequest'
+                                - $ref: '#/components/schemas/InstagramPostRequest'
+                                - $ref: '#/components/schemas/XPostRequest'
+                                - $ref: '#/components/schemas/ThreadsPostRequest'
+                                - $ref: '#/components/schemas/LinkedinPostRequest'
+                                - $ref: '#/components/schemas/RedditPostRequest'
+                                - $ref: '#/components/schemas/MastodonPostRequest'
+                                - $ref: '#/components/schemas/PinterestPostRequest'
+                                - $ref: '#/components/schemas/GoogleBusinessProfilePostRequest'
+                                - $ref: '#/components/schemas/YoutubePostRequest'
+                                - $ref: '#/components/schemas/TiktokPostRequest'
+                                - $ref: '#/components/schemas/BlueskyPostRequest'
+
+
+    '/posts/{postId}':
+        get:
+            tags:
+                - Posts
+            summary: Find post by ID
+            description: Returns a single post
+            operationId: getPost
+            parameters:
+                - name: postId
+                  in: path
+                  description: ID of post to return
+                  required: true
+                  schema:
+                      type: integer
+            responses:
+                '400':
+                    description: Bad Request
+                '404':
+                    description: Resource not found
+                '405':
+                    description: Validation exception
+                '200':
+                    description: Post found
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                description: An object containing the details of the post.
+        delete:
+            tags:
+                - Posts
+            summary: Deletes the post
+            operationId: deletePost
+            parameters:
+                - name: postId
+                  in: path
+                  description: Post id to delete
+                  required: true
+                  schema:
+                      type: integer
+            responses:
+                '400':
+                    description: Bad Request
+                '404':
+                    description: Resource not found
+                '405':
+                    description: Validation exception
+                '200':
+                    description: Post deleted
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    success:
+                                        type: boolean
+                                        description: Indicates whether the post was deleted.
+                                    message:
+                                        type: string
+                                        description: A message confirming that the post was deleted successfully.
+        patch:
+            tags:
+                - Posts
+            summary: Update the post
+            operationId: updatePost
+            parameters:
+                - name: postId
+                  in: path
+                  description: Post id to update
+                  required: true
+                  schema:
+                      type: integer
+            responses:
+                '404':
+                    description: Resource not found
+                '422':
+                    description: The given data was invalid.
+                '200':
+                    description: Post updated
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    success:
+                                        type: boolean
+                                        description: Indicates whether the post was updated successfully.
+                                    message:
+                                        type: string
+                                        description: A message confirming that the post was updated successfully.
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                accounts:
+                                    type: array
+                                    items:
+                                        type: integer
+                                    description: ID(s) of one or more your social accounts.
+                                team_id:
+                                    type: integer
+                                    description: Unique ID of your team.
+                                publish_at:
+                                    example: "2025-04-14 15:30:00"
+                                    type: string
+                                    description: Format should be Y-m-d H:i:s (UTC)
+                                content:
+                                    type: string
+                                    description: Updated content of the post.
+                                existing_attachments:
+                                    type: array
+                                    items:
+                                        type: string
+                                        description: The value received from /upload_media/status endpoint.
+                                options:
+                                    type: object
+                                    description: Additional options for the post.
+                                    properties:
+                                        video_title:
+                                            type: string
+                                            description: Title of the video
+                                        trim_link_from_content:
+                                            type: boolean
+                                            description: Trim the link from the content.
+                                        link:
+                                            type: string
+                                            description: Link of your media.
+                                        media_alt_text:
+                                            type: string
+                                            description: Alternate text descriptions for media.
+                                            items:
+                                                type: string
+                                        comment:
+                                            type: string
+                                            description: First comment for the post.
+    
+    /upload_media:
+        post:
+            tags:
+                - Media Upload
+            summary: Initiate media upload
+            description: Generate a pre-signed URL to upload a media file.
+            operationId: uploadMediaFile
+            responses:
+                '200':
+                    description: file uploaded
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    name:
+                                        type: string
+                                        description: File name e.g, ("document.pdf" ,"image.png")
+                                    mime_type:
+                                        type: string
+                                        description: File type e.g, ("application/pdf" ,"image/png")
+                                    signed_url:
+                                        type: string
+                                        description: |
+                                            This parameter provides a pre-signed URL to which you should upload your media file using the HTTP PUT method. 
+                                            
+                                            To ensure a successful upload, you must set the following headers in your request:
+                                            - `Content-Type`: Set this header to the MIME type of the file you are uploading (e.g., `image/jpeg`, `video/mp4`). This header informs the server about the type of the media content being uploaded.
+                                            - `Content-Length`: Set this header to be the size of the file being uploaded (bytes).
+                                            - `x-amz-acl`: Set this to `private`.
+                                    key:
+                                        type: string
+                                        description: A unique identifier used to check the upload status.
+                                    secure_key:
+                                        type: string
+                                        description: File secure key.
+                                    url:
+                                        type: string
+                                        description: File public URL.
+                '422':
+                    description: The given data was invalid.
+            requestBody:
+                description: Send the file name and MIME type to generate a pre-signed URL and key.
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            required:
+                                - name
+                                - mime_type
+                            properties:
+                                name:
+                                    type: string
+                                    description: File name e.g, ("document.pdf" ,"image.png")
+                                mime_type:
+                                    type: string
+                                    description: File type e.g, ("application/pdf" ,"image/png")
+
+    /upload_media/status:
+        get:
+            tags:
+                - Media Upload
+            summary: Check media upload status
+            description: Check your media upload status and get upload token.
+            operationId: checkMediaStatus
+            parameters:
+                - name: key
+                  in: query
+                  description: The key value returned in /upload_media endpoint.
+                  schema:
+                      type: string
+            responses:
+                '200':
+                    description: File status
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    success:
+                                        type: boolean
+                                        description: Indicates whether the file has been uploaded.
+                                    message:
+                                        type: string
+                                        description: A message confirming the media upload.
+                                    upload_token:
+                                        type: string
+                                        nullable: true
+                                        description: Pass this token value in existing_attachments when creating a post.
+                '400':
+                    description: Bad Request
+                '422':
+                    description: The given data was invalid.
+            
+
+    /accounts:
+        get:
+            tags:
+                - Accounts
+            summary: Get social accounts
+            operationId: getAccounts
+            responses:
+                '200':
+                    description: Social accounts
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    items:
+                                        type: array
+                                        description: User's social media accounts.
+                                    currentPage:
+                                        type: integer
+                                        description: The current page number of the paginated results.
+                                    lastPage:
+                                        type: integer
+                                        description: The last page number of the paginated results.
+                                    nextPage:
+                                        type: integer
+                                        description: The next page number, or null if this is the last page.
+                                    total:
+                                        type: integer
+                                        description: Total number of results.
+                '422':
+                    description: The given data was invalid.
+            parameters:
+                - name: type
+                  in: query
+                  description: The type of accounts you want to fetch.
+                  schema:
+                      type: array
+                      items:
+                          type: string
+                          enum:
+                              - all
+                              - user
+                              - shared
+                          default: all
+        post:
+            tags:
+                - Accounts
+            summary: Connect a new social account
+            operationId: connectAccount
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            required:
+                                - provider
+                            properties:
+                                provider:
+                                    type: string
+                                    description: Social media network name e.g, (Instagram, Twitter etc.)
+                                postback_url:
+                                    type: string
+                                    description: Receive postback at this URL. Sends a JSON POST request with parameters `account_action` (added, updated, connected, disconnected), `account_id`, `account_type`, and `account_name`. The `account_action` is `disconnected` if an account is found disconnected by the system, `connected` if a previously disconnected account is reconnected by the system automatically, `added` when a new account is added/connected for the first time, and `updated` when an existing account is reconnected.
+                                account_id:
+                                    type: string
+                                    description: Social account id if reconnecting an existing account.
+            responses:
+                '400':
+                    description: The provider is not supported
+                '200':
+                    description: You get the URL for connecting social accounts. Recommended to open it in a popup.
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    connect_url:
+                                        type: string
+                                        format: uri
+                                        description: URL that you can visit to add your accounts
+    '/accounts/{accountId}':
+        get:
+            tags:
+                - Accounts
+            summary: Get social account by ID
+            description: Returns a single account
+            operationId: getAccount
+            parameters:
+                - name: accountId
+                  in: path
+                  description: Social account id.
+                  required: true
+                  schema:
+                      type: integer
+            responses:
+                '404':
+                    description: Resource not found
+                '200':
+                    description: Social account found
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                description: Object containing all the details of the social account.
+
+        patch:
+            tags:
+                - Accounts
+            summary: Update the social account
+            operationId: updateAccount
+            parameters:
+                - name: accountId
+                  in: path
+                  description: Social account id.
+                  required: true
+                  schema:
+                      type: integer
+            responses:
+                '404':
+                    description: The resource not found
+                '422':
+                    description: The given data was invalid.
+
+                '200':
+                    description: Social account updated
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    message:
+                                        type: string
+                                        description: Message indicating the social account was updated successfully.
+
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                name:
+                                    type: string
+                                    description: New name for the connected social account.
+        delete:
+            tags:
+                - Accounts
+            summary: Deletes the social account
+            operationId: deleteAccount
+            parameters:
+                - name: accountId
+                  in: path
+                  description: Account id to delete
+                  required: true
+                  schema:
+                      type: integer
+            responses:
+                '404':
+                    description: Resource not found
+                '200':
+                    description: Account deleted
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    message:
+                                        type: string
+                                        description: Message indicating the social account was deleted successfully.
+
+    /teams:
+        get:
+            tags:
+                - Team
+            summary: Get your teams
+            operationId: getTeams
+            responses:
+                '400':
+                    description: Bad Request
+                '200':
+                    description: Teams
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    items:
+                                        type: array
+                                        description: An array of data objects (Teams).
+                                        items:
+                                            type: object
+                                    currentPage:
+                                        type: integer
+                                        description: The current page number of the paginated results.
+                                    lastPage:
+                                        type: integer
+                                        description: The last page number of the paginated results.
+                                    nextPage:
+                                        type: integer
+                                        description: The next page number, or null if this is the last page.
+                                    total:
+                                        type: integer
+                                        description: Total number of items.
+            parameters:
+                - name: type
+                  in: query
+                  description: The type of team you want to fetch
+                  schema:
+                      type: array
+                      items:
+                          type: string
+                          enum:
+                              - joined
+                              - created
+                          default: created
+
+        post:
+            tags:
+                - Team
+            summary: Create a new team.
+            operationId: createTeam
+            responses:
+                '405':
+                    description: Invalid input
+                '200':
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    success:
+                                        type: boolean
+                                        description: True if the team was created.
+                                    message:
+                                        type: string
+                                        description: Message indicating the team was created successfully.
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            required:
+                                - name
+                                - accounts
+                            properties:
+                                name:
+                                    type: string
+                                    description: Name of the team.
+                                accounts:
+                                    type: array
+                                    items:
+                                        type: object
+                                        properties:
+                                            id:
+                                                type: integer
+                                                description: ID of the social media account to be included in the team.
+                                members:
+                                    type: array
+                                    items:
+                                        type: object
+                                        properties:
+                                            id:
+                                                type: integer
+                                                description: ID of the member to be added to the team.
+                                            permissions:
+                                                type: array
+                                                description: Permissions assigned to the member.
+
+                                requires_content_approval:
+                                    type: boolean
+                                    description: True if content requires approval before publishing.
+
+    '/teams/{teamId}':
+        put:
+            tags:
+                - Team
+            summary: Update team
+            operationId: updateTeam
+            parameters:
+                - name: teamId
+                  in: path
+                  description: Team id you want to update
+                  required: true
+                  schema:
+                      type: integer
+            responses:
+                '200':
+                    description: resource updated
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    success:
+                                        type: boolean
+                                        description: True if the team was found.
+                                    message:
+                                        type: string
+                                        description: Message indicating the team was found successfully.
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            required:
+                                - name
+                                - accounts
+                            properties:
+                                name:
+                                    type: string
+                                    description: Name of the team.
+                                accounts:
+                                    type: array
+                                    items:
+                                        type: object
+                                        properties:
+                                            id:
+                                                type: integer
+                                                description: ID of the social media account to include in the team.
+                                members:
+                                    type: array
+                                    items:
+                                        type: object
+                                        properties:
+                                            id:
+                                                type: integer
+                                                description: ID of the member to be added to the team.
+                                            permissions:
+                                                type: array
+                                                description: Permissions assigned to the member.
+
+                                requires_content_approval:
+                                    type: boolean
+                                    description: True if content requires approval before publishing.
+
+        delete:
+            tags:
+                - Team
+            summary: Deletes team.
+            operationId: deleteTeam
+            parameters:
+                - name: teamId
+                  in: path
+                  description: Team id you want to delete.
+                  required: true
+                  schema:
+                      type: integer
+            responses:
+                '200':
+                    description: Resource deleted
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    success:
+                                        type: boolean
+                                        description: True if the team was deleted.
+                                    message:
+                                        type: string
+                                        description: Message indicating the team was deleted successfully.
+    /generated_content:
+        post:
+            tags:
+                - Content Generation
+            summary: Generate AI content
+            operationId: generateContent
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            required:
+                                - type
+                                - topic
+                                - acccount_id
+                            properties:
+                                type:
+                                    type: string
+                                    enum:
+                                        - tweet
+                                        - linkedin_post
+                                        - instagram_caption
+                                        - generic
+                                    default: generic
+                                topic:
+                                    type: string
+                                    description: Any topic name for which you want to generate the content. e.g, Mother's day.
+                                team_id:
+                                    nullable: true
+                                    type: integer
+                                    description: Team id.
+                                account_id:
+                                    type: integer
+                                    description: Social account id.
+            responses:
+                '200':
+                    description: Content generated
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    id:
+                                        type: integer
+                                        description: Content ID.
+                                    type:
+                                        type: string
+                                        description: Type of content.
+                                    content:
+                                        type: string
+                                        description: The actual generated content text.
+                                    keyword:
+                                        type: string
+                                        description: The keyword or prompt used to generate the content.
+                                    user_id:
+                                        type: integer
+                                        description: Your SocialBu account id.
+                                    team_id:
+                                        type: integer
+                                        description: Your team id.
+                                    account_id:
+                                        type: integer
+                                        description: Social account id.
+                                    is_bad:
+                                        type: boolean
+                                    created_at:
+                                        type: string
+                                        example: "2025-04-14 15:30:00"
+                                    model:
+                                        type: string
+                                        description: The model used to generate the content (e.g., gpt-3, gpt-neo, gpt-j).
+                '403':
+                    description: Don't have permission.
+                '422':
+                    description: The given data was invalid.
+
+    /generated_content/generate_by_post:
+        post:
+            tags:
+                - Content Generation
+            summary: Generate content by post
+            operationId: generateContentByPost
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            required:
+                                - post_id
+                            properties:
+                                post_id:
+                                    type: integer
+                                    description: ID of the post for which you want to generate similar content.
+            responses:
+                '200':
+                    description: Content generated
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    id:
+                                        type: integer
+                                        description: Content ID.
+                                    type:
+                                        type: string
+                                        description: Type of content.
+                                    content:
+                                        type: string
+                                        description:  The actual generated content text.
+                                    keyword:
+                                        type: string
+                                        description: The keyword or prompt used to generate the content.
+                                    user_id:
+                                        type: integer
+                                        description: Your SocialBu account id.
+                                    team_id:
+                                        type: integer
+                                        description: Your team id.
+                                    account_id:
+                                        type: integer
+                                        description: Social account id.
+                                    is_bad:
+                                        type: boolean
+                                    created_at:
+                                        type: string
+                                        example: "2025-04-14 15:30:00"
+                                    model:
+                                        type: string
+                                        description: The model used to generate the content (e.g., gpt-3, gpt-neo, gpt-j).
+                '403':
+                    description: Don't have permission.
+                '422':
+                    description: The given data was invalid.
+
+    /generated_content/autocomplete_post:
+        post:
+            tags:
+                - Content Generation
+            summary: Autocomplete post content
+            operationId: autocompletePost
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            required:
+                                - account_id
+                            properties:
+                                content:
+                                    type: string
+                                    nullable: true
+                                    description: Content that you want to autocomplete.
+                                account_id:
+                                    type: integer
+                                    description: Social account id.
+                                team_id:
+                                    type: integer
+                                    nullable: true
+                                    description: Your team id.
+            responses:
+                '200':
+                    description: Content generated
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    content:
+                                        type: string
+                                        description: The autocompleted version of the input content.
+                '403':
+                    description: Don't have permission.
+                '422':
+                    description: The given data was invalid.
+
+
+    /insights/posts/counts:
+        get:
+            tags:
+                - Insights
+            summary: Get posts count.
+            description: Returns the number of posts published on each date.
+            operationId: getPostsCounts
+            responses:
+                '404':
+                    description: Resource not found
+                '200':
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    data:
+                                        type: array
+                                        description: An array of objects containing date-based post counts.
+                                        items:
+                                            type: object
+                                            properties:
+                                                date:
+                                                    type: string
+                                                    format: date
+                                                    description: The specific date for which the post count is reported.
+                                                count:
+                                                    type: integer
+                                                    description: The number of posts published on the corresponding date.
+            parameters:
+                - name: post_type
+                  in: query
+                  description: The post type that you want to get count against. Default is all.
+                  schema:
+                      type: string
+                      enum:
+                          - image
+                          - video
+                          - text
+                - name: accounts
+                  in: query
+                  description: An array of account IDs.
+                  schema:
+                      type: array
+                      items:
+                          type: integer
+                - name: team
+                  in: query
+                  description: The team id
+                  schema:
+                      type: integer
+                - name: start
+                  in: query
+                  description: The start date
+                  required: true
+                  schema:
+                      type: string
+                      format: date
+                      description: Format should be Y-m-d
+                - name: end
+                  in: query
+                  description: The end date
+                  required: true
+                  schema:
+                      type: string
+                      format: date
+                      description: Format should be Y-m-d
+
+
+    /insights/posts/metrics:
+        get:
+            tags:
+                - Insights
+            summary: Get various metrics for posts within a specified time frame.
+            description: Returns a count of specified metrics for posts within a given time frame.
+            operationId: getPostsMetrics
+            responses:
+                '404':
+                    description: Resource not found
+                '200':
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    success:
+                                        type: boolean
+                                        description: True if the request was successful.
+                                    data:
+                                        type: object
+                                        properties:
+                                            items:
+                                                type: object
+                                                properties:
+                                                    comments:
+                                                        type: array
+                                                        description: An array of objects containing comment counts by date.
+                                                        items:
+                                                            type: object
+                                                            properties:
+                                                                date:
+                                                                    type: string
+                                                                    format: date
+                                                                    description: Date of the comment count (YYYY-MM-DD).
+                                                                value:
+                                                                    type: integer
+                                                                    description: Number of comments on that date.
+                                                    likes:
+                                                        type: array
+                                                        description: An array of objects containing like counts by date.
+                                                        items:
+                                                            type: object
+                                                            properties:
+                                                                date:
+                                                                    type: string
+                                                                    format: date
+                                                                    description: Date of the likes count (YYYY-MM-DD).
+                                                                value:
+                                                                    type: integer
+                                                                    description: Number of likes on that date.
+
+            parameters:
+                - name: post_type
+                  in: query
+                  description: The post type
+                  required: true
+                  schema:
+                      type: string
+                      enum:
+                          - image
+                          - video
+                          - text
+                - name: start
+                  in: query
+                  description: The start date
+                  required: true
+                  schema:
+                      type: string
+                      format: date
+                      description: Format should be Y-m-d
+                - name: end
+                  in: query
+                  description: The end date
+                  required: true
+                  schema:
+                      type: string
+                      format: date
+                      description: Format should be Y-m-d
+                - name: metrics
+                  in: query
+                  description: |
+                        The comma separated metrics type you want to fetch.
+                        Supported metrics for each network:
+
+                        - **Instagram**:
+                            - *Photo Posts:* `likes`, `comments`, `reach`, `saved`, `shares`
+                            - *Video/Reel Posts:* `views`, `likes`, `comments`, `reach`, `saved`, `shares`
+                            - *Carousel Posts:* `likes`, `comments`, `reach`, `saved`, `shares`
+                            - *Story Posts:* `views`, `likes`, `comments`, `reach`, `saved`, `shares`
+                        - **Facebook**:
+                            - *Photo Posts:* `reactions`, `comments`, `shares`, `impressions`, `post_clicks`
+                            - *Video Posts:* `reactions`, `comments`, `shares`, `impressions`, `post_clicks`, `video_views`
+                            - *Reel Posts:* `reactions`, `comments`, `shares`, `impressions`, `post_clicks`, `video_views`
+                            - *Story Posts:* `reactions`, `comments`, `shares`, `impressions`, `post_clicks`, `video_views`
+                        - **Twitter**: `retweets`, `likes`
+                        - **Mastodon**: `replies`, `reblogs`, `favourites`
+                        - **LinkedIn**: `clicks`, `comments`, `engagement`, `impressions`, `likes`, `shares`, `unique_impressions`, `video_views`
+                        - **YouTube**: `subscribers`, `videos`, `views`
+                        - **Pinterest**: `saved`, `impressions`, `pin_clicks`, `reactions`, `comments`, `video_views`, `video_avg_watch_time`
+                        - **Reddit**: `comments`, `score`
+                        - **Threads**: `views`, `likes`, `replies`, `reposts`, `quotes`
+                        - **Bluesky**: `likes`, `replies`, `reposts`
+
+                  required: true
+                  schema:
+                      type: string
+                - name: accounts
+                  in: query
+                  description: An array of account IDs.
+                  schema:
+                      type: array
+                      items:
+                          type: integer
+                - name: team
+                  in: query
+                  description: The team id.
+                  schema:
+                      type: integer
+
+
+    /insights/posts/top_posts:
+        get:
+            tags:
+                - Insights
+            summary: Get the top posts
+            description: Returns a list of the top posts based on specified metrics
+            operationId: getTopPosts
+            responses:
+                '404':
+                    description: Resource not found
+                '200':
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    data:
+                                        type: array
+                                        description: Array of all top posts.
+            parameters:
+                - name: start
+                  in: query
+                  description: The start date and format should be Y-m-d.
+                  required: true
+                  schema:
+                      type: string
+                      format: date
+                - name: end
+                  in: query
+                  description: The end date and format should be Y-m-d.
+                  required: true
+                  schema:
+                      type: string
+                      format: date
+                - name: metrics
+                  in: query
+                  description: The comma separated metrics type you want to rank posts by
+                  required: true
+                  schema:
+                      type: string
+                - name: accounts
+                  in: query
+                  description: An array of account IDs.
+                  schema:
+                      type: array
+                      items:
+                          type: integer
+                - name: team
+                  in: query
+                  description: The team id
+                  schema:
+                      type: integer
+
+   
+    /insights/accounts/metrics:
+        get:
+            tags:
+                - Insights
+            summary: Get various metrics for accounts within a specified time frame.
+            description: Returns date-wise counts of specified metrics for accounts within a given time frame.
+            operationId: getAccountsMetrics
+            responses:
+                '404':
+                    description: Resource not found
+                '200':
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    data:
+                                        type: array
+                                        items:
+                                            type: object
+                                            properties:
+                                                account_id:
+                                                    type: integer
+                                                    description: ID of the connected social media account.
+                                                metrics:
+                                                    type: object
+                                                    properties:
+                                                        followers:
+                                                            type: array
+                                                            description: Daily follower counts.
+                                                            items:
+                                                                type: object
+                                                                properties:
+                                                                    date:
+                                                                        type: string
+                                                                        format: date
+                                                                        description: Date (YYYY-MM-DD).
+                                                                    value:
+                                                                        type: integer
+                                                                        description: Number of followers on that date.
+                                                        total_views:
+                                                            type: array
+                                                            description: Daily total views over time.
+                                                            items:
+                                                                type: object
+                                                                properties:
+                                                                    date:
+                                                                        type: string
+                                                                        format: date
+                                                                        description: Date (YYYY-MM-DD).
+                                                                    value:
+                                                                        type: integer
+                                                                        description: Number of views on that date.
+            parameters:
+                - name: start
+                  in: query
+                  description: The start date
+                  required: true
+                  schema:
+                      type: string
+                      format: date
+                      description: Format should be Y-m-d
+                - name: end
+                  in: query
+                  description: The end date
+                  required: true
+                  schema:
+                      type: string
+                      format: date
+                      description: Format should be Y-m-d
+                - name: metrics
+                  in: query
+                  description: The comma separated metrics type you want to fetch
+                  required: true
+                  schema:
+                      type: string
+                - name: calculate_growth
+                  in: query
+                  description: A boolean value indicating whether to calculate the growth of the metrics.
+                  schema:
+                      type: boolean
+                      default: true
+                - name: accounts
+                  in: query
+                  description: An array of account IDs.
+                  schema:
+                      type: array
+                      items:
+                          type: integer
+                - name: team
+                  in: query
+                  description: The team id
+                  schema:
+                      type: integer
+
+    /insights/stats:
+        get:
+            tags:
+                - Insights
+            summary: Get stats for the user.
+            operationId: getUserStats
+            responses:
+                '400':
+                    description: Bad Request
+                '404':
+                    description: Resource not found
+                '405':
+                    description: Validation exception
+                '200':
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    unreadFeeds:
+                                        type: integer
+                                        description: Number of unread feed items for the user.
+                                    userAutomations:
+                                        type: integer
+                                        description: Number of automation set up by the user.
+                                    userPendingPosts:
+                                        type: integer
+                                        description: Number of social media posts pending approval.
+                                    userFailedPosts:
+                                        type: integer
+                                        description: Number of social media posts that failed to publish.
+                                    inactiveAccounts:
+                                        type: integer
+                                        description: Number of connected social media accounts that are inactive or disconnected.
+
+
+
+    /insights/teams/metrics:
+        get:
+            tags:
+                - Insights
+            summary: Get the team metrics
+            description: Returns a team's members performance metrics
+            operationId: getTeamsMetrics
+            responses:
+                '404':
+                    description: Resource not found
+                '200':
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    data:
+                                        type: array
+                                        items:
+                                            type: object
+                                            description: List of team members with their engagement metrics and post statistics.
+                                            properties:
+                                                member_id:
+                                                    type: integer
+                                                    description: Unique identifier of the team member.
+                                                member_name:
+                                                    type: string
+                                                    description: Full name of the team member.
+                                                member_photo:
+                                                    type: string
+                                                    description: URL to the profile photo of the team member.
+                                                total_engagements:
+                                                    type: integer
+                                                    description: Total number of interactions (likes, comments.) received across the member's posts.
+                                                scheduled_posts:
+                                                    type: array
+                                                    description: Array scheduled posts.
+                                                    items:
+                                                        type: object
+                                                        properties:
+                                                            date:
+                                                                type: string
+                                                                format: date
+                                                                description: Date on which the posts are scheduled.
+                                                            count:
+                                                                type: integer
+                                                                description: Number of posts scheduled on that date.
+
+                                                published_posts:
+                                                    type: array
+                                                    description: Array of published posts.
+                                                    items:
+                                                        type: object
+                                                        properties:
+                                                            date:
+                                                                type: string
+                                                                format: date
+                                                                description: Date on which the posts were published.
+                                                            count:
+                                                                type: integer
+                                                                description: Number of posts published on that date.
+                                                rejected_posts:
+                                                    type: array
+                                                    description: Array of rejected posts.
+                                                    items:
+                                                        type: object
+                                                        properties:
+                                                            date:
+                                                                type: string
+                                                                format: date
+                                                                description: Date on which the posts were rejected.
+                                                            count:
+                                                                type: integer
+                                                                description: Number of posts rejected on that date.
+                                    success:
+                                        type: boolean
+                                        description: True if operation was successful.
+            parameters:
+                - name: start
+                  in: query
+                  description: The start date and Format should be Y-m-d.
+                  required: true
+                  schema:
+                      type: string
+                      format: date
+
+                - name: end
+                  in: query
+                  description: The end date and Format should be Y-m-d.
+                  required: true
+                  schema:
+                      type: string
+                      format: date
+
+                - name: metrics
+                  in: query
+                  description: The comma separated metrics type you want to fetch
+                  required: true
+                  schema:
+                      type: string
+                - name: accounts
+                  in: query
+                  description: An array of account IDs.
+                  schema:
+                      type: array
+                      items:
+                          type: integer
+                - name: team
+                  in: query
+                  description: The team id
+                  schema:
+                      type: integer   
+
+    /insights/teams/activity:
+        get:
+            tags:
+                - Insights
+            summary: Get team activity logs.
+            description: Returns the latest activity logs for all teams the user has access to.
+            operationId: getTeamActivity
+            responses:
+                '404':
+                    description: Resource not found
+                '200':
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    data:
+                                        type: array
+                                        description: An array of team activity log entries.
+                                        items:
+                                            type: object
+                                            properties:
+                                                id:
+                                                    type: integer
+                                                    description: Unique identifier of the activity log entry.
+                                                type:
+                                                    type: string
+                                                    description: The type of activity (e.g., post_approved, post_created, added_user).
+                                                title:
+                                                    type: string
+                                                    description: Human-readable title for the activity.
+                                                description:
+                                                    type: string
+                                                    description: Detailed description of the activity.
+                                                timestamp:
+                                                    type: string
+                                                    description: Human-readable relative time (e.g., "2 hours ago").
+                                                created_at:
+                                                    type: string
+                                                    format: date-time
+                                                    description: The exact timestamp when the activity occurred.
+            parameters:
+                - name: limit
+                  in: query
+                  description: Maximum number of activity logs to return.
+                  schema:
+                      type: integer
+                      minimum: 1
+                      maximum: 100
+                      default: 5
+
+    /insights/automations/logs:
+        get:
+            tags:
+                - Insights
+            summary: Get automation logs.
+            description: Returns the latest activity logs for all automations the user has access to.
+            operationId: getAutomationLogs
+            responses:
+                '404':
+                    description: Resource not found
+                '200':
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    data:
+                                        type: array
+                                        description: An array of automation activity log entries.
+                                        items:
+                                            type: object
+                                            properties:
+                                                id:
+                                                    type: integer
+                                                    description: Unique identifier of the activity log entry.
+                                                title:
+                                                    type: string
+                                                    description: The automation description or title.
+                                                description:
+                                                    type: string
+                                                    description: Detailed description of the automation activity.
+                                                timestamp:
+                                                    type: string
+                                                    description: Human-readable relative time (e.g., "2 hours ago").
+                                                created_at:
+                                                    type: string
+                                                    format: date-time
+                                                    description: The exact timestamp when the activity occurred.
+            parameters:
+                - name: limit
+                  in: query
+                  description: Maximum number of automation logs to return.
+                  schema:
+                      type: integer
+                      minimum: 1
+                      maximum: 100
+                      default: 5
+
+    /insights/accounts/followers:
+        get:
+            tags:
+                - Insights
+            summary: Get followers count for all accounts.
+            description: Returns the total followers count across all accessible accounts and followers count per account.
+            operationId: getAllFollowers
+            responses:
+                '404':
+                    description: Resource not found
+                '200':
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    data:
+                                        type: object
+                                        properties:
+                                            total_followers:
+                                                type: integer
+                                                description: Total number of followers across all accounts.
+                                            followers_by_account:
+                                                type: array
+                                                description: An array of follower counts per account.
+                                                items:
+                                                    type: object
+                                                    properties:
+                                                        account_id:
+                                                            type: integer
+                                                            description: Unique identifier of the social media account.
+                                                        followers:
+                                                            type: integer
+                                                            description: Number of followers for this account.
+
+    /insights/accounts/followers/growth:
+        get:
+            tags:
+                - Insights
+            summary: Get followers growth over time.
+            description: Returns the daily followers growth data for all accessible accounts within the specified date range.
+            operationId: getFollowersGrowth
+            responses:
+                '404':
+                    description: Resource not found
+                '422':
+                    description: Validation error
+                '200':
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    data:
+                                        type: array
+                                        description: An array of daily followers growth data.
+                                        items:
+                                            type: object
+                                            properties:
+                                                date:
+                                                    type: string
+                                                    format: date
+                                                    description: The specific date for which the followers count is reported.
+                                                total_followers:
+                                                    type: integer
+                                                    description: Total number of followers across all accounts on this date.
+            parameters:
+                - name: start
+                  in: query
+                  description: The start date
+                  required: true
+                  schema:
+                      type: string
+                      format: date
+                      description: Format should be Y-m-d
+                - name: end
+                  in: query
+                  description: The end date
+                  required: true
+                  schema:
+                      type: string
+                      format: date
+                      description: Format should be Y-m-d. Must be greater than start date.
+
+    /insights/accounts/engagement/rate:
+        get:
+            tags:
+                - Insights
+            summary: Get total engagement rate.
+            description: Returns the overall engagement rate calculated as (total engagements / total followers) * 100 across all accessible accounts.
+            operationId: getEngagementRate
+            responses:
+                '404':
+                    description: Resource not found
+                '200':
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    data:
+                                        type: object
+                                        properties:
+                                            total_engagement_rate:
+                                                type: number
+                                                format: float
+                                                description: The total engagement rate as a percentage, rounded to 2 decimal places.
+
+    /insights/accounts/engagement/trend:
+        get:
+            tags:
+                - Insights
+            summary: Get engagement trend over time.
+            description: Returns the daily engagement data (likes, comments, shares, etc.) for all accessible accounts within the specified date range.
+            operationId: getEngagementTrend
+            responses:
+                '404':
+                    description: Resource not found
+                '422':
+                    description: Validation error
+                '200':
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    data:
+                                        type: array
+                                        description: An array of daily engagement data.
+                                        items:
+                                            type: object
+                                            properties:
+                                                date:
+                                                    type: string
+                                                    format: date
+                                                    description: The specific date for which the engagement is reported.
+                                                engagements:
+                                                    type: integer
+                                                    description: Total number of engagements (likes, comments, shares, etc.) across all accounts on this date.
+            parameters:
+                - name: start
+                  in: query
+                  description: The start date
+                  required: true
+                  schema:
+                      type: string
+                      format: date
+                      description: Format should be Y-m-d
+                - name: end
+                  in: query
+                  description: The end date
+                  required: true
+                  schema:
+                      type: string
+                      format: date
+                      description: Format should be Y-m-d. Must be greater than start date.
+
+    /insights/inbox/unread-count:
+        get:
+            tags:
+                - Insights
+            summary: Get open conversations count.
+            description: Returns the count of open messages in the social inbox for all accessible accounts.
+            operationId: getOpenMessagesCount
+            responses:
+                '404':
+                    description: Resource not found
+                '200':
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    data:
+                                        type: object
+                                        properties:
+                                            open_msgs_count:
+                                                type: integer
+                                                description: Total number of open messages in the inbox.
+
+
+    /curation/topics:
+
+        get:
+            tags:
+                - Curation
+            summary: Get the curation topics.
+            description: Returns a list of curation topics.
+            operationId: getTopics
+            responses:
+                '400':
+                    description: Bad Request
+                '404':
+                    description: Resource not found
+                '405':
+                    description: Validation exception
+                '200':
+                    description: successful operation
+                    content:
+                        application/json:
+                           schema:
+                                type: object
+                                properties:
+                                    items:
+                                        type: array
+                                        items:
+                                            $ref: '#/components/schemas/CurationItem'
+                                    currentPage:
+                                        type: integer
+                                        description: The current page number of the paginated results.
+                                    lastPage:
+                                        type: integer
+                                        description: The last page number of the paginated results.
+                                    nextPage:
+                                        type: integer
+                                        description: The next page number, or null if this is the last page.
+                                    total:
+                                        type: integer
+                                        description: Total number of result items.
+            parameters:
+                - name: q
+                  in: query
+                  description: The topic name.
+                  schema:
+                      type: string
+
+    /curation/items:
+        get:
+            tags:
+                - Curation
+            summary: Get curation items
+            description: Returns a list curation items
+            operationId: getItems
+            responses:
+                '400':
+                    description: Bad Request
+                '404':
+                    description: Resource not found
+                '405':
+                    description: Validation exception
+                '200':
+                    description: successful operation id, feed_id, title, link, description, media, published_at, authors, tags, score.
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    items:
+                                        type: array
+                                        items:
+                                            $ref: '#/components/schemas/CurationItem'
+                                    currentPage:
+                                        type: integer
+                                        description: The current page number of the paginated results.
+                                    lastPage:
+                                        type: integer
+                                        description: The last page number of the paginated results.
+                                    nextPage:
+                                        type: integer
+                                        description: The next page number, or null if this is the last page.
+                                    total:
+                                        type: integer
+                                        description: Total number of result items.
+            parameters:
+                - name: page
+                  in: query
+                  description: The page number
+                  schema:
+                      type: integer
+                - name: per_page
+                  in: query
+                  description: The number of items per page
+                  schema:
+                      type: integer
+                - name: authors
+                  in: query
+                  description: The list of authors
+                  schema:
+                      type: array
+                      items:
+                          type: string
+                - name: feed_id
+                  in: query
+                  description: The feed id
+                  schema:
+                      type: integer
+                - name: topics
+                  in: query
+                  description: The list of topics
+                  schema:
+                      type: array
+                      items:
+                          type: string
+                - name: search
+                  in: query
+                  description: The search string
+                  schema:
+                      type: string
+                - name: from
+                  in: query
+                  description: The start date and Format should be Y-m-d.
+                  schema:
+                      type: string
+                      format: date
+                - name: to
+                  in: query
+                  description: The end date and Format should be Y-m-d.
+                  schema:
+                      type: string
+                      format: date
+                
+
+    /curation/items/{id}:
+        get:
+            tags:
+                - Curation
+            summary: Find curation item by ID
+            description: Returns a curation item
+            operationId: getItem
+            parameters:
+                - name: id
+                  in: path
+                  description: ID of item to return
+                  required: true
+                  schema:
+                      type: integer
+            responses:
+                '404':
+                    description: Resource not found
+                '200':
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                               $ref: '#/components/schemas/CurationItem'
+
+    /notifications:
+        get:
+            tags:
+                - Notifications
+            summary: Get notifications
+            description: Returns a list of notifications
+            operationId: getNotifications
+            responses:
+                '400':
+                    description: Bad Request
+                '404':
+                    description: Resource not found
+                '405':
+                    description: Validation exception
+                '200':
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                  items:
+                                    type: array
+                                    items:
+                                      $ref: '#/components/schemas/Notification'
+                                  currentPage:
+                                    type: integer
+                                    description: The current page number of the paginated result set.
+                                  lastPage:
+                                    type: integer
+                                    description: The last page number of the paginated result set.
+                                  nextPage:
+                                    type: integer
+                                    nullable: true
+                                    description: The next page number, or null if this is the last page.
+                                  total:
+                                    type: integer
+                                    description: Total number of result items on current page.
+    /notifications/unread:
+        get:
+            tags:
+                - Notifications
+            summary: Get unread notifications
+            description: Returns a list unread notifications
+            operationId: getUnreadNotifications
+            responses:
+                '400':
+                    description: Bad Request
+                '404':
+                    description: Resource not found
+                '405':
+                    description: Validation exception
+                '200':
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                  items:
+                                    type: array
+                                    items:
+                                      $ref: '#/components/schemas/Notification'
+                                  currentPage:
+                                    type: integer
+                                    description: The current page number of the paginated result set.
+                                  lastPage:
+                                    type: integer
+                                    description: The last page number of the paginated result set.
+                                  nextPage:
+                                    type: integer
+                                    nullable: true
+                                    description: The next page number, or null if this is the last page.
+                                  total:
+                                    type: integer
+                                    description: Total number of result items on current page.
+    /notifications/{id}:
+        get:
+            tags:
+                - Notifications
+            summary: Find notification by ID
+            description: Returns a notification
+            operationId: getNotification
+            parameters:
+                - name: id
+                  in: path
+                  description: ID of notification to return
+                  required: true
+                  schema:
+                      type: integer
+            responses:
+                '404':
+                    description: Resource not found
+                '200':
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                               $ref: '#/components/schemas/Notification'
+    /notifications/{id}/mark_read:
+        post:
+            tags:
+                - Notifications
+            summary: Mark a notification as read
+            operationId: markAsRead
+            parameters:
+                - name: id
+                  in: path
+                  description: ID of notifications to mark read
+                  required: true
+                  schema:
+                      type: integer
+            responses:
+                '404':
+                    description: Resource not found
+                '200':
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Notification'
+
+    /notifications/{id}/mark_unread:
+        post:
+            tags:
+                - Notifications
+            summary: Mark a notification as unread
+            operationId: markAsUnread
+            parameters:
+                - name: id
+                  in: path
+                  description: ID of notification to mark as unread
+                  required: true
+                  schema:
+                      type: integer
+            responses:
+                '404':
+                    description: Resource not found
+                '200':
+                    description: successful operation
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Notification'
+
+    /notifications/mark_all_read:
+        post:
+            tags:
+                - Notifications
+            summary: Mark all notifications as read
+            operationId: markAllAsRead
+            responses:
+                '200':
+                    description: successful operation
+
+                '400':
+                    description: Bad request.
