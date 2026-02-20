@@ -1,7 +1,15 @@
 import { Command } from 'commander';
-import { api } from '../api';
+import { api, apiPaginated } from '../api';
 import { outputJson, handleApiError, printTable } from '../output';
 import chalk from 'chalk';
+
+function parsePage(value: string): number {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new Error('Page must be a positive integer.');
+  }
+  return parsed;
+}
 
 export function registerCurateCommand(program: Command): void {
   const cmd = program
@@ -12,12 +20,17 @@ export function registerCurateCommand(program: Command): void {
     .command('topics')
     .description('List curation topics')
     .option('--query <q>', 'Search topic name')
+    .option('--page <n>', 'Page number', parsePage, 1)
+    .option('--all', 'Fetch all pages')
     .option('--json', 'Output as JSON')
     .action(async (opts) => {
       const query: any = {};
       if (opts.query) query.q = opts.query;
+      if (!opts.all) query.page = opts.page;
 
-      const res = await api('GET', '/curation/topics', undefined, query);
+      const res = opts.all
+        ? await apiPaginated('GET', '/curation/topics', undefined, query)
+        : await api('GET', '/curation/topics', undefined, query);
       handleApiError(res);
 
       if (opts.json) {
@@ -39,6 +52,7 @@ export function registerCurateCommand(program: Command): void {
           String(t.score ?? '-'),
         ])
       );
+      console.log(chalk.dim(`\nPage ${res.data.currentPage ?? 1} of ${res.data.lastPage ?? 1} | Total: ${res.data.total ?? items.length}`));
     });
 
   cmd
@@ -48,7 +62,8 @@ export function registerCurateCommand(program: Command): void {
     .option('--search <q>', 'Search string')
     .option('--from <date>', 'Start date (YYYY-MM-DD)')
     .option('--to <date>', 'End date (YYYY-MM-DD)')
-    .option('--page <n>', 'Page number')
+    .option('--page <n>', 'Page number', parsePage, 1)
+    .option('--all', 'Fetch all pages')
     .option('--per-page <n>', 'Items per page')
     .option('--json', 'Output as JSON')
     .action(async (opts) => {
@@ -57,10 +72,12 @@ export function registerCurateCommand(program: Command): void {
       if (opts.search) query.search = opts.search;
       if (opts.from) query.from = opts.from;
       if (opts.to) query.to = opts.to;
-      if (opts.page) query.page = opts.page;
+      if (!opts.all) query.page = opts.page;
       if (opts.perPage) query.per_page = opts.perPage;
 
-      const res = await api('GET', '/curation/items', undefined, query);
+      const res = opts.all
+        ? await apiPaginated('GET', '/curation/items', undefined, query)
+        : await api('GET', '/curation/items', undefined, query);
       handleApiError(res);
 
       if (opts.json) {

@@ -1,7 +1,15 @@
 import { Command } from 'commander';
-import { api } from '../api';
+import { api, apiPaginated } from '../api';
 import { outputJson, handleApiError, printTable, printSuccess } from '../output';
 import chalk from 'chalk';
+
+function parsePage(value: string): number {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new Error('Page must be a positive integer.');
+  }
+  return parsed;
+}
 
 export function registerAccountCommand(program: Command): void {
   const cmd = program
@@ -12,9 +20,16 @@ export function registerAccountCommand(program: Command): void {
     .command('list')
     .description('List all connected social accounts')
     .option('--type <type>', 'Filter by type: all, shared, user', 'all')
+    .option('--page <n>', 'Page number', parsePage, 1)
+    .option('--all', 'Fetch all pages')
     .option('--json', 'Output as JSON')
     .action(async (opts) => {
-      const res = await api('GET', '/accounts', undefined, { type: [opts.type] });
+      const query: any = { type: [opts.type] };
+      if (!opts.all) query.page = opts.page;
+
+      const res = opts.all
+        ? await apiPaginated('GET', '/accounts', undefined, query)
+        : await api('GET', '/accounts', undefined, query);
       handleApiError(res);
 
       if (opts.json) {
@@ -38,7 +53,7 @@ export function registerAccountCommand(program: Command): void {
           a.status || (a.is_active ? 'active' : 'inactive'),
         ])
       );
-      console.log(chalk.dim(`\nTotal: ${res.data.total ?? items.length}`));
+      console.log(chalk.dim(`\nPage ${res.data.currentPage ?? 1} of ${res.data.lastPage ?? 1} | Total: ${res.data.total ?? items.length}`));
     });
 
   cmd

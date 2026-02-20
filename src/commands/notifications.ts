@@ -1,7 +1,15 @@
 import { Command } from 'commander';
-import { api } from '../api';
+import { api, apiPaginated } from '../api';
 import { outputJson, handleApiError, printTable, printSuccess } from '../output';
 import chalk from 'chalk';
+
+function parsePage(value: string): number {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new Error('Page must be a positive integer.');
+  }
+  return parsed;
+}
 
 export function registerNotificationsCommand(program: Command): void {
   const cmd = program
@@ -12,9 +20,16 @@ export function registerNotificationsCommand(program: Command): void {
   cmd
     .command('list')
     .description('List all notifications')
+    .option('--page <n>', 'Page number', parsePage, 1)
+    .option('--all', 'Fetch all pages')
     .option('--json', 'Output as JSON')
     .action(async (opts) => {
-      const res = await api('GET', '/notifications');
+      const query: any = {};
+      if (!opts.all) query.page = opts.page;
+
+      const res = opts.all
+        ? await apiPaginated('GET', '/notifications', undefined, query)
+        : await api('GET', '/notifications', undefined, query);
       handleApiError(res);
 
       if (opts.json) {
@@ -38,15 +53,22 @@ export function registerNotificationsCommand(program: Command): void {
           n.created_at || '-',
         ])
       );
-      console.log(chalk.dim(`\nTotal: ${res.data.total ?? items.length}`));
+      console.log(chalk.dim(`\nPage ${res.data.currentPage ?? 1} of ${res.data.lastPage ?? 1} | Total: ${res.data.total ?? items.length}`));
     });
 
   cmd
     .command('unread')
     .description('List unread notifications')
+    .option('--page <n>', 'Page number', parsePage, 1)
+    .option('--all', 'Fetch all pages')
     .option('--json', 'Output as JSON')
     .action(async (opts) => {
-      const res = await api('GET', '/notifications/unread');
+      const query: any = {};
+      if (!opts.all) query.page = opts.page;
+
+      const res = opts.all
+        ? await apiPaginated('GET', '/notifications/unread', undefined, query)
+        : await api('GET', '/notifications/unread', undefined, query);
       handleApiError(res);
 
       if (opts.json) {
@@ -69,6 +91,7 @@ export function registerNotificationsCommand(program: Command): void {
           n.created_at || '-',
         ])
       );
+      console.log(chalk.dim(`\nPage ${res.data.currentPage ?? 1} of ${res.data.lastPage ?? 1} | Total: ${res.data.total ?? items.length}`));
     });
 
   cmd
@@ -99,7 +122,7 @@ export function registerNotificationsCommand(program: Command): void {
     .description('Mark a notification as read')
     .option('--json', 'Output as JSON')
     .action(async (id: string, opts) => {
-      const res = await api('PUT', `/notifications/${id}/read`);
+      const res = await api('POST', `/notifications/${id}/mark_read`);
       handleApiError(res);
 
       if (opts.json) {
@@ -108,6 +131,22 @@ export function registerNotificationsCommand(program: Command): void {
       }
 
       printSuccess('Notification marked as read.');
+    });
+
+  cmd
+    .command('mark-unread <id>')
+    .description('Mark a notification as unread')
+    .option('--json', 'Output as JSON')
+    .action(async (id: string, opts) => {
+      const res = await api('POST', `/notifications/${id}/mark_unread`);
+      handleApiError(res);
+
+      if (opts.json) {
+        outputJson(res.data);
+        return;
+      }
+
+      printSuccess('Notification marked as unread.');
     });
 
   cmd
