@@ -84,4 +84,105 @@ export function registerAiCommand(program: Command): void {
       console.log();
       if (res.data.id) console.log(chalk.dim(`Content ID: ${res.data.id}`));
     });
+
+  // AI Tools using DynamicForm backend
+  const toolsCmd = cmd
+    .command('tools')
+    .description('AI content generation tools');
+
+  toolsCmd
+    .command('tweet')
+    .description('Generate tweet/post content using AI')
+    .requiredOption('--description <text>', 'Brief description of the post content')
+    .option('--tone <tone>', 'Tone: funny, aesthetic, cool, professional', 'professional')
+    .option('--variants <n>', 'Number of variants (1-5)', '3')
+    .option('--json', 'Output as JSON')
+    .action(async (opts) => {
+      const body: any = {
+        post_description: opts.description,
+        tone: opts.tone,
+        variant_count: opts.variants,
+      };
+
+      const res = await api('POST', '/generate/forms/TweetGenerator', body);
+      handleApiError(res);
+
+      if (opts.json) {
+        outputJson(res.data);
+        return;
+      }
+
+      console.log(chalk.bold('\n🐦 Generated Tweets\n'));
+      const posts = res.data.text?.split('---END_POST---').filter((p: string) => p.trim());
+      if (posts && posts.length > 0) {
+        posts.forEach((post: string, i: number) => {
+          console.log(chalk.cyan(`${i + 1}.`) + ' ' + post.trim());
+          console.log();
+        });
+      } else {
+        console.log(res.data.text || JSON.stringify(res.data));
+      }
+    });
+
+  toolsCmd
+    .command('caption')
+    .description('Generate social media captions using AI')
+    .requiredOption('--platform <platform>', 'Platform: instagram, linkedin, facebook, tiktok')
+    .requiredOption('--description <text>', 'Brief description of the content')
+    .option('--tone <tone>', 'Tone: funny, aesthetic, cool, professional', 'professional')
+    .option('--variants <n>', 'Number of variants (1-5)', '2')
+    .option('--json', 'Output as JSON')
+    .action(async (opts) => {
+      const platformMap: Record<string, string> = {
+        instagram: 'InstagramCaptionGenerator',
+        linkedin: 'LinkedinPostGenerator',
+        facebook: 'FacebookPostGenerator',
+        tiktok: 'TiktokCaptionGenerator',
+      };
+
+      const formClass = platformMap[opts.platform.toLowerCase()];
+      if (!formClass) {
+        console.error(chalk.red(`Unknown platform: ${opts.platform}. Use: instagram, linkedin, facebook, tiktok`));
+        process.exit(1);
+      }
+
+      const body: any = {
+        post_description: opts.description,
+        tone: opts.tone,
+        variant_count: opts.variants,
+      };
+
+      const res = await api('POST', `/generate/forms/${formClass}`, body);
+      handleApiError(res);
+
+      if (opts.json) {
+        outputJson(res.data);
+        return;
+      }
+
+      console.log(chalk.bold(`\n✨ Generated ${opts.platform.charAt(0).toUpperCase() + opts.platform.slice(1)} Caption\n`));
+      console.log(res.data.text || JSON.stringify(res.data));
+    });
+
+  toolsCmd
+    .command('hashtags')
+    .description('Generate hashtag clusters using AI')
+    .requiredOption('--topic <text>', 'Topic or keyword to generate hashtags for')
+    .option('--json', 'Output as JSON')
+    .action(async (opts) => {
+      const body: any = {
+        topic: opts.topic,
+      };
+
+      const res = await api('POST', '/generate/forms/HashtagClusterGenerator', body);
+      handleApiError(res);
+
+      if (opts.json) {
+        outputJson(res.data);
+        return;
+      }
+
+      console.log(chalk.bold('\n#️⃣ Generated Hashtags\n'));
+      console.log(res.data.text || JSON.stringify(res.data));
+    });
 }
