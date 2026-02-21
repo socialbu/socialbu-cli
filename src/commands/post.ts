@@ -257,6 +257,12 @@ export function registerPostCommand(program: Command): void {
     .option('--publish-at <datetime>', 'Updated publish time (YYYY-MM-DD HH:mm:ss UTC)')
     .option('--accounts <ids...>', 'Updated account IDs')
     .option('--team <id>', 'Team ID')
+    .option('--attachment-tokens <tokens...>', 'Upload tokens for attachments')
+    .option('--video-title <text>', 'Video title (options.video_title)')
+    .option('--trim-link', 'Trim link from content (options.trim_link_from_content)')
+    .option('--link <url>', 'Link for post (options.link)')
+    .option('--media-alt-text <texts...>', 'Alt text for media items (options.media_alt_text)')
+    .option('--comment <text>', 'First comment (options.comment)')
     .option('--json', 'Output as JSON')
     .action(async (id: string, opts) => {
       const body: any = {};
@@ -264,6 +270,23 @@ export function registerPostCommand(program: Command): void {
       if (opts.publishAt) body.publish_at = opts.publishAt;
       if (opts.accounts) body.accounts = opts.accounts.map(Number);
       if (opts.team) body.team_id = Number(opts.team);
+      if (opts.attachmentTokens) {
+        body.existing_attachments = opts.attachmentTokens.map((uploadToken: string) => ({
+          upload_token: uploadToken,
+        }));
+      }
+
+      // PATCH endpoint supports limited options per spec
+      const options: any = {};
+      if (opts.videoTitle) options.video_title = opts.videoTitle;
+      if (opts.trimLink) options.trim_link_from_content = true;
+      if (opts.link) options.link = opts.link;
+      if (opts.mediaAltText) options.media_alt_text = opts.mediaAltText;
+      if (opts.comment) options.comment = opts.comment;
+
+      if (Object.keys(options).length > 0) {
+        body.options = options;
+      }
 
       const res = await api('PATCH', `/posts/${id}`, body);
       handleApiError(res);
