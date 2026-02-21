@@ -85,10 +85,69 @@ export function registerAiCommand(program: Command): void {
       if (res.data.id) console.log(chalk.dim(`Content ID: ${res.data.id}`));
     });
 
-  // AI Tools using DynamicForm backend
+  // AI Tools using DynamicForm backend (authenticated endpoints)
   const toolsCmd = cmd
     .command('tools')
-    .description('AI content generation tools');
+    .description('AI content generation tools (powered by SocialBu\'s DynamicForm backend)');
+
+  toolsCmd
+    .command('list')
+    .description('List all available AI tools with their field definitions')
+    .option('--json', 'Output as JSON')
+    .action(async (opts) => {
+      const res = await api('GET', '/ai/tools');
+      handleApiError(res);
+
+      if (opts.json) {
+        outputJson(res.data);
+        return;
+      }
+
+      const tools: any[] = res.data.tools || [];
+      if (tools.length === 0) {
+        console.log(chalk.dim('No tools found.'));
+        return;
+      }
+
+      console.log(chalk.bold(`\n🛠  Available AI Tools (${tools.length})\n`));
+      for (const tool of tools) {
+        const fieldNames = tool.fields?.map((f: any) => f.id).join(', ') || '';
+        console.log(`  ${chalk.cyan(tool.slug.padEnd(40))} ${chalk.dim(tool.name)}`);
+        if (fieldNames) console.log(`    ${chalk.dim('Fields: ' + fieldNames)}`);
+      }
+      console.log();
+      console.log(chalk.dim('Run: socialbu ai tools run <slug> --fields \'{"field":"value"}\''));
+    });
+
+  toolsCmd
+    .command('run <slug>')
+    .description('Run any AI tool by its slug (use "list" to see available tools)')
+    .requiredOption('--fields <json>', 'JSON object with the tool\'s required fields')
+    .option('--json', 'Output as JSON')
+    .action(async (slug: string, opts) => {
+      let fields: any;
+      try {
+        fields = JSON.parse(opts.fields);
+      } catch {
+        console.error(chalk.red('--fields must be valid JSON, e.g. \'{"topic":"AI","tone":"professional"}\''));
+        process.exit(1);
+      }
+
+      const res = await api('POST', `/ai/tools/${slug}`, fields);
+      handleApiError(res);
+
+      if (opts.json) {
+        outputJson(res.data);
+        return;
+      }
+
+      console.log(chalk.bold('\n✨ Tool Output\n'));
+      if (res.data.text) {
+        console.log(res.data.text);
+      } else {
+        console.log(JSON.stringify(res.data, null, 2));
+      }
+    });
 
   toolsCmd
     .command('tweet')
@@ -104,7 +163,7 @@ export function registerAiCommand(program: Command): void {
         variant_count: opts.variants,
       };
 
-      const res = await api('POST', '/generate/forms/TweetGenerator', body);
+      const res = await api('POST', '/ai/tools/tweet_generator', body);
       handleApiError(res);
 
       if (opts.json) {
@@ -134,14 +193,14 @@ export function registerAiCommand(program: Command): void {
     .option('--json', 'Output as JSON')
     .action(async (opts) => {
       const platformMap: Record<string, string> = {
-        instagram: 'InstagramCaptionGenerator',
-        linkedin: 'LinkedinPostGenerator',
-        facebook: 'FacebookPostGenerator',
-        tiktok: 'TiktokCaptionGenerator',
+        instagram: 'instagram_caption_generator',
+        linkedin: 'linkedin_post_generator',
+        facebook: 'facebook_post_generator',
+        tiktok: 'tiktok_caption_generator',
       };
 
-      const formClass = platformMap[opts.platform.toLowerCase()];
-      if (!formClass) {
+      const formSlug = platformMap[opts.platform.toLowerCase()];
+      if (!formSlug) {
         console.error(chalk.red(`Unknown platform: ${opts.platform}. Use: instagram, linkedin, facebook, tiktok`));
         process.exit(1);
       }
@@ -152,7 +211,7 @@ export function registerAiCommand(program: Command): void {
         variant_count: opts.variants,
       };
 
-      const res = await api('POST', `/generate/forms/${formClass}`, body);
+      const res = await api('POST', `/ai/tools/${formSlug}`, body);
       handleApiError(res);
 
       if (opts.json) {
@@ -174,7 +233,7 @@ export function registerAiCommand(program: Command): void {
         topic: opts.topic,
       };
 
-      const res = await api('POST', '/generate/forms/HashtagClusterGenerator', body);
+      const res = await api('POST', '/ai/tools/hashtag_cluster_generator', body);
       handleApiError(res);
 
       if (opts.json) {
