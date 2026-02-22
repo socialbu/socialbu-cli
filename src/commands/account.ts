@@ -1,15 +1,8 @@
 import { Command } from 'commander';
 import { api, apiPaginated } from '../api';
-import { outputJson, handleApiError, printTable, printSuccess } from '../output';
+import { outputJson, handleApiError, printTable, printSuccess, printPaginationFooter } from '../output';
+import { parsePage } from '../utils';
 import chalk from 'chalk';
-
-function parsePage(value: string): number {
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isInteger(parsed) || parsed < 1) {
-    throw new Error('Page must be a positive integer.');
-  }
-  return parsed;
-}
 
 export function registerAccountCommand(program: Command): void {
   const cmd = program
@@ -53,7 +46,7 @@ export function registerAccountCommand(program: Command): void {
           a.status || (a.is_active ? 'active' : 'inactive'),
         ])
       );
-      console.log(chalk.dim(`\nPage ${res.data.currentPage ?? 1} of ${res.data.lastPage ?? 1} | Total: ${res.data.total ?? items.length}`));
+      printPaginationFooter(res.data);
     });
 
   cmd

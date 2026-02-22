@@ -6,10 +6,10 @@ import chalk from 'chalk';
 export function registerWhoamiCommand(program: Command): void {
   program
     .command('whoami')
-    .description('Show current user info and account stats')
+    .description('Show the currently authenticated user')
     .option('--json', 'Output as JSON')
     .action(async (opts) => {
-      const res = await api('GET', '/insights/stats');
+      const res = await api('GET', '/user');
       handleApiError(res);
 
       if (opts.json) {
@@ -17,15 +17,16 @@ export function registerWhoamiCommand(program: Command): void {
         return;
       }
 
-      console.log(chalk.bold('\nSocialBu Account Stats\n'));
+      const u = res.data;
+      console.log(chalk.bold('\n👤 Authenticated User\n'));
       printTable(
-        ['Metric', 'Value'],
+        ['Field', 'Value'],
         [
-          ['Unread Feeds', String(res.data.unreadFeeds ?? '-')],
-          ['Active Automations', String(res.data.userAutomations ?? '-')],
-          ['Pending Posts', String(res.data.userPendingPosts ?? '-')],
-          ['Failed Posts', String(res.data.userFailedPosts ?? '-')],
-          ['Inactive Accounts', String(res.data.inactiveAccounts ?? '-')],
+          ['ID', String(u.id ?? '-')],
+          ['Name', u.name ?? '-'],
+          ['Email', u.email ?? '-'],
+          ['Company', u.company ?? '-'],
+          ['Verified', u.verified ? chalk.green('Yes') : chalk.yellow('No')],
         ]
       );
     });

@@ -39,3 +39,18 @@ export function isJsonFlag(opts: any): boolean {
   // Walk up to find --json from parent command
   return opts?.json === true || opts?.parent?.json === true;
 }
+
+/**
+ * Print standard pagination footer after a list command.
+ */
+export function printPaginationFooter(data: {
+  currentPage?: number;
+  lastPage?: number;
+  total?: number;
+  items?: any[];
+}): void {
+  const current = data.currentPage ?? 1;
+  const last = data.lastPage ?? 1;
+  const total = data.total ?? data.items?.length ?? 0;
+  console.log(chalk.dim(`\nPage ${current} of ${last} | Total: ${total}`));
+}
