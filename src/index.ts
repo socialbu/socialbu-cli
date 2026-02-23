@@ -10,6 +10,7 @@ import { registerTeamCommand } from './commands/team';
 import { registerAnalyticsCommand } from './commands/analytics';
 import { registerNotificationsCommand } from './commands/notifications';
 import { registerCurateCommand } from './commands/curate';
+import { registerMediaCommand } from './commands/media';
 
 program
   .name('socialbu')
@@ -25,5 +26,6 @@ registerTeamCommand(program);
 registerAnalyticsCommand(program);
 registerNotificationsCommand(program);
 registerCurateCommand(program);
+registerMediaCommand(program);
 
 program.parse();

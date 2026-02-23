@@ -76,6 +76,31 @@ export function registerTeamCommand(program: Command): void {
     });
 
   cmd
+    .command('update <id>')
+    .description('Update a team')
+    .requiredOption('--name <name>', 'Team name')
+    .requiredOption('--accounts <ids...>', 'Account IDs to include')
+    .option('--require-approval', 'Require content approval')
+    .option('--json', 'Output as JSON')
+    .action(async (id: string, opts) => {
+      const body: any = {
+        name: opts.name,
+        accounts: opts.accounts.map((id: string) => ({ id: Number(id) })),
+      };
+      if (opts.requireApproval) body.requires_content_approval = true;
+
+      const res = await api('PUT', `/teams/${id}`, body);
+      handleApiError(res);
+
+      if (opts.json) {
+        outputJson(res.data);
+        return;
+      }
+
+      printSuccess(res.data.message || 'Team updated.');
+    });
+
+  cmd
     .command('delete <id>')
     .description('Delete a team')
     .option('--json', 'Output as JSON')

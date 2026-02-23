@@ -184,4 +184,199 @@ export function registerAnalyticsCommand(program: Command): void {
       const count = res.data?.data?.open_msgs_count ?? '-';
       console.log(chalk.bold('\n💬 Open Conversations:'), count);
     });
+
+  cmd
+    .command('posts-metrics')
+    .description('Get post metrics (likes, comments, etc.) over time')
+    .requiredOption('--start <date>', 'Start date (YYYY-MM-DD)')
+    .requiredOption('--end <date>', 'End date (YYYY-MM-DD)')
+    .requiredOption('--post-type <type>', 'Post type: image, text, video')
+    .requiredOption('--metrics <list>', 'Comma-separated metrics (likes,comments,views,etc)')
+    .option('--accounts <ids...>', 'Filter by account IDs')
+    .option('--team <id>', 'Team ID')
+    .option('--json', 'Output as JSON')
+    .action(async (opts) => {
+      const query: any = {
+        start: opts.start,
+        end: opts.end,
+        post_type: opts.postType,
+        metrics: opts.metrics,
+      };
+      if (opts.accounts) query.accounts = opts.accounts;
+      if (opts.team) query.team = opts.team;
+
+      const res = await api('GET', '/insights/posts/metrics', undefined, query);
+      handleApiError(res);
+
+      if (opts.json) {
+        outputJson(res.data);
+        return;
+      }
+
+      const data = res.data?.data || res.data;
+      console.log(chalk.bold('\n📊 Posts Metrics\n'));
+      if (data?.items) {
+        for (const [metric, values] of Object.entries(data.items)) {
+          if (Array.isArray(values) && values.length > 0) {
+            console.log(chalk.cyan(`${metric}:`));
+            printTable(
+              ['Date', 'Value'],
+              values.map((v: any) => [v.date, String(v.value)])
+            );
+            console.log();
+          }
+        }
+      }
+    });
+
+  cmd
+    .command('top-posts')
+    .description('Get top performing posts')
+    .requiredOption('--start <date>', 'Start date (YYYY-MM-DD)')
+    .requiredOption('--end <date>', 'End date (YYYY-MM-DD)')
+    .requiredOption('--metrics <list>', 'Comma-separated metrics to rank by')
+    .option('--accounts <ids...>', 'Filter by account IDs')
+    .option('--team <id>', 'Team ID')
+    .option('--json', 'Output as JSON')
+    .action(async (opts) => {
+      const query: any = {
+        start: opts.start,
+        end: opts.end,
+        metrics: opts.metrics,
+      };
+      if (opts.accounts) query.accounts = opts.accounts;
+      if (opts.team) query.team = opts.team;
+
+      const res = await api('GET', '/insights/posts/top_posts', undefined, query);
+      handleApiError(res);
+
+      if (opts.json) {
+        outputJson(res.data);
+        return;
+      }
+
+      const data = res.data?.data || [];
+      if (data.length === 0) {
+        console.log(chalk.dim('No top posts found.'));
+        return;
+      }
+
+      console.log(chalk.bold(`\n🔥 Top Posts (${data.length})\n`));
+      printTable(
+        ['ID', 'Content', 'Published'],
+        data.map((p: any) => [
+          String(p.id || '-'),
+          (p.content || '').slice(0, 50) + ((p.content || '').length > 50 ? '…' : ''),
+          p.published_at || '-',
+        ])
+      );
+    });
+
+  cmd
+    .command('team-metrics')
+    .description('Get team performance metrics')
+    .requiredOption('--start <date>', 'Start date (YYYY-MM-DD)')
+    .requiredOption('--end <date>', 'End date (YYYY-MM-DD)')
+    .requiredOption('--metrics <list>', 'Comma-separated metrics to fetch')
+    .option('--accounts <ids...>', 'Filter by account IDs')
+    .option('--team <id>', 'Team ID')
+    .option('--json', 'Output as JSON')
+    .action(async (opts) => {
+      const query: any = {
+        start: opts.start,
+        end: opts.end,
+        metrics: opts.metrics,
+      };
+      if (opts.accounts) query.accounts = opts.accounts;
+      if (opts.team) query.team = opts.team;
+
+      const res = await api('GET', '/insights/teams/metrics', undefined, query);
+      handleApiError(res);
+
+      if (opts.json) {
+        outputJson(res.data);
+        return;
+      }
+
+      const data = res.data?.data || [];
+      if (data.length === 0) {
+        console.log(chalk.dim('No team metrics found.'));
+        return;
+      }
+
+      console.log(chalk.bold(`\n👥 Team Metrics (${data.length} members)\n`));
+      printTable(
+        ['Member', 'Total Engagements'],
+        data.map((m: any) => [
+          m.member_name || `User ${m.member_id}`,
+          String(m.total_engagements ?? 0),
+        ])
+      );
+    });
+
+  cmd
+    .command('team-activity')
+    .description('Get team activity logs')
+    .option('--limit <n>', 'Number of logs to fetch (1-100)', '5')
+    .option('--json', 'Output as JSON')
+    .action(async (opts) => {
+      const res = await api('GET', '/insights/teams/activity', undefined, {
+        limit: Number(opts.limit),
+      });
+      handleApiError(res);
+
+      if (opts.json) {
+        outputJson(res.data);
+        return;
+      }
+
+      const data = res.data?.data || [];
+      if (data.length === 0) {
+        console.log(chalk.dim('No team activity found.'));
+        return;
+      }
+
+      console.log(chalk.bold(`\n📋 Team Activity (${data.length})\n`));
+      printTable(
+        ['Type', 'Title', 'When'],
+        data.map((a: any) => [
+          a.type || '-',
+          (a.title || '-').slice(0, 50),
+          a.timestamp || '-',
+        ])
+      );
+    });
+
+  cmd
+    .command('automation-logs')
+    .description('Get automation activity logs')
+    .option('--limit <n>', 'Number of logs to fetch (1-100)', '5')
+    .option('--json', 'Output as JSON')
+    .action(async (opts) => {
+      const res = await api('GET', '/insights/automations/logs', undefined, {
+        limit: Number(opts.limit),
+      });
+      handleApiError(res);
+
+      if (opts.json) {
+        outputJson(res.data);
+        return;
+      }
+
+      const data = res.data?.data || [];
+      if (data.length === 0) {
+        console.log(chalk.dim('No automation logs found.'));
+        return;
+      }
+
+      console.log(chalk.bold(`\n🤖 Automation Logs (${data.length})\n`));
+      printTable(
+        ['Title', 'Description', 'When'],
+        data.map((a: any) => [
+          (a.title || '-').slice(0, 30),
+          (a.description || '-').slice(0, 50),
+          a.timestamp || '-',
+        ])
+      );
+    });
 }

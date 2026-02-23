@@ -93,7 +93,7 @@ export function registerAccountCommand(program: Command): void {
     .requiredOption('--name <name>', 'New name for the account')
     .option('--json', 'Output as JSON')
     .action(async (id: string, opts) => {
-      const res = await api('PUT', `/accounts/${id}`, { name: opts.name });
+      const res = await api('PATCH', `/accounts/${id}`, { name: opts.name });
       handleApiError(res);
 
       if (opts.json) {
