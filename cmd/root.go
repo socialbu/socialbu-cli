@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -32,16 +31,11 @@ func Execute() error {
 
 func newRootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
-		Use:   "socialbu",
-		Short: "SocialBu CLI",
-		Long:  "A Go-based SocialBu CLI for accounts, posts, analytics, and more.",
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := config.Init(); err != nil {
-				return err
-			}
-			cfg = config.Current()
-			return nil
-		},
+		Use:           "socialbu",
+		Short:         "SocialBu CLI",
+		Long:          "A Go-based SocialBu CLI for accounts, posts, analytics, and more.",
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
 	rootCmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "output raw JSON")
 	versionCmd := &cobra.Command{
@@ -74,15 +68,16 @@ func newRootCmd() *cobra.Command {
 		Short: "Generate shell completion scripts",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			out := cmd.OutOrStdout()
 			switch args[0] {
 			case "bash":
-				return rootCmd.GenBashCompletionV2(os.Stdout, true)
+				return rootCmd.GenBashCompletionV2(out, true)
 			case "zsh":
-				return rootCmd.GenZshCompletion(os.Stdout)
+				return rootCmd.GenZshCompletion(out)
 			case "fish":
-				return rootCmd.GenFishCompletion(os.Stdout, true)
+				return rootCmd.GenFishCompletion(out, true)
 			case "powershell":
-				return rootCmd.GenPowerShellCompletionWithDesc(os.Stdout)
+				return rootCmd.GenPowerShellCompletionWithDesc(out)
 			default:
 				return fmt.Errorf("unsupported shell %q", args[0])
 			}
@@ -107,8 +102,22 @@ func newRootCmd() *cobra.Command {
 }
 
 func apiClient() (*client.Client, error) {
+	if err := ensureConfig(); err != nil {
+		return nil, err
+	}
 	if strings.TrimSpace(cfg.APIKey) == "" {
 		return nil, fmt.Errorf("missing API key, run `socialbu config set-key <key>` or set SOCIALBU_API_KEY")
 	}
 	return client.New(cfg.BaseURL, cfg.APIKey), nil
+}
+
+func ensureConfig() error {
+	if strings.TrimSpace(cfg.APIKey) != "" || strings.TrimSpace(cfg.BaseURL) != "" {
+		return nil
+	}
+	if err := config.Init(); err != nil {
+		return err
+	}
+	cfg = config.Current()
+	return nil
 }

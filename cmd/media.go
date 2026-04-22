@@ -9,10 +9,13 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/usamaejaz/socialbu-cli/internal/output"
 )
+
+const mediaUploadTimeout = 2 * time.Minute
 
 type mediaUploadInitResponse struct {
 	Name      string `json:"name"`
@@ -54,7 +57,7 @@ func newMediaUploadCmd() *cobra.Command {
 			if err := cli.Request(context.Background(), "POST", "/upload_media", nil, payload, &initResp); err != nil {
 				return err
 			}
-			if err := putSignedMedia(initResp.SignedURL, filePath, mimeType, info.Size()); err != nil {
+			if err := putSignedMedia(cmd.Context(), initResp.SignedURL, filePath, mimeType, info.Size()); err != nil {
 				return err
 			}
 			var statusResp map[string]any
@@ -101,14 +104,14 @@ func newMediaStatusCmd() *cobra.Command {
 	return cmd
 }
 
-func putSignedMedia(signedURL, filePath, mimeType string, size int64) error {
+func putSignedMedia(ctx context.Context, signedURL, filePath, mimeType string, size int64) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("open file: %w", err)
 	}
 	defer file.Close()
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPut, signedURL, file)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, signedURL, file)
 	if err != nil {
 		return fmt.Errorf("build upload request: %w", err)
 	}
@@ -116,7 +119,7 @@ func putSignedMedia(signedURL, filePath, mimeType string, size int64) error {
 	req.Header.Set("Content-Length", fmt.Sprintf("%d", size))
 	req.Header.Set("x-amz-acl", "private")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := (&http.Client{Timeout: mediaUploadTimeout}).Do(req)
 	if err != nil {
 		return fmt.Errorf("upload media: %w", err)
 	}
