@@ -39,7 +39,7 @@ func (c *Client) Request(ctx context.Context, method, endpoint string, query url
 	if err != nil {
 		return fmt.Errorf("parse base url: %w", err)
 	}
-	base.Path = path.Join(base.Path, endpoint)
+	base.Path = path.Join(base.Path, strings.TrimLeft(endpoint, "/"))
 	if query != nil {
 		base.RawQuery = query.Encode()
 	}

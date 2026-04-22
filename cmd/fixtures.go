@@ -64,7 +64,12 @@ func buildFixtureCaptureScript(outDir string) string {
 	var b strings.Builder
 	b.WriteString("#!/usr/bin/env bash\n")
 	b.WriteString("set -euo pipefail\n\n")
-	b.WriteString("cd /root/.openclaw/workspace/worktrees/socialbu-cli-go-cobra-recover\n")
+	b.WriteString("repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)\n")
+	b.WriteString("if [[ -z \"$repo_root\" ]]; then\n")
+	b.WriteString("  echo 'Unable to determine repository root. Run this script from within the project checkout.' >&2\n")
+	b.WriteString("  exit 1\n")
+	b.WriteString("fi\n")
+	b.WriteString("cd \"$repo_root\"\n")
 	b.WriteString(fmt.Sprintf("mkdir -p %s\n", shellQuote(outDir)))
 	b.WriteString("\n")
 	b.WriteString("if [[ -z \"${SOCIALBU_API_KEY:-}\" && -f \"$HOME/.socialbu/config.json\" ]]; then\n")

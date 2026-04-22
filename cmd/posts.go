@@ -95,7 +95,7 @@ func newPostsCreateCmd() *cobra.Command {
 				return err
 			}
 			if len(accounts) == 0 {
-				return fmt.Errorf("at least one --account is required")
+				return fmt.Errorf("at least one --accounts is required")
 			}
 			if publishAt == "" {
 				return fmt.Errorf("--publish-at is required")

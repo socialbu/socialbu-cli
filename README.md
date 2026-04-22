@@ -73,11 +73,10 @@ git push origin v0.1.0
 When a valid API key is available, capture real endpoint responses before changing renderer assumptions:
 
 ```bash
-cd /root/.openclaw/workspace/worktrees/socialbu-cli-go-cobra-recover
 go run . fixtures capture > /tmp/socialbu-capture.sh
 bash /tmp/socialbu-capture.sh
 ```
 
-This prints a deterministic script that writes the current fixture set into `artifacts/samples/`, including the endpoints that still need manual IDs or keys filled in. The generated script now reuses `~/.socialbu/config.json` automatically when `SOCIALBU_API_KEY` is not exported, so a previously saved key works without extra shell setup.
+Run those commands from within the repository checkout. The generated script resolves the repo root automatically, writes the current fixture set into `artifacts/samples/`, and reuses `~/.socialbu/config.json` when `SOCIALBU_API_KEY` is not exported.
 
-A fuller endpoint checklist lives in `artifacts/socialbu-cli-fixture-capture-plan-2026-04-21-0622.md`.
+Prioritize `whoami`, `account`, `post`, and `team` fixture coverage first, then extend the capture set for any endpoint whose renderer logic still relies on fallback field guesses.
