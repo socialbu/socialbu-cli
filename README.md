@@ -1,87 +1,83 @@
 # socialbu-cli
 
-Command-line interface for managing your [SocialBu](https://socialbu.com) accounts, posts, analytics, and more — right from the terminal.
+A Go-based SocialBu CLI aiming for `gh`-style ergonomics.
 
-## Installation
+## Current bootstrap
 
-```bash
-npm install -g socialbu-cli
-```
+This worktree now contains the first Go/Cobra rewrite scaffold with:
+- Cobra root command and global `--json`
+- Config management via `~/.socialbu/config.json`
+- Environment variable support: `SOCIALBU_API_KEY`, `SOCIALBU_BASE_URL`
+- HTTP client for SocialBu API bearer auth
+- Working command groups for:
+  - `config`
+  - `whoami`
+  - `account list|get`
+  - `post list|get|create`
+  - `team list|create|delete`
 
-## Quick Start
-
-```bash
-# Set your API key
-socialbu config set-key <your-api-key>
-
-# Check your identity
-socialbu whoami
-
-# List connected social accounts
-socialbu account list
-
-# Create a post
-socialbu post create --content "Hello from the CLI!" --accounts 123 --publish-at "2025-04-14 15:30:00"
-
-# List scheduled posts
-socialbu post list --type scheduled
-
-# Generate AI content
-socialbu ai generate --topic "Mother's Day" --type tweet
-
-# View analytics
-socialbu analytics stats
-socialbu analytics followers
-```
-
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| `socialbu config set-key <key>` | Store your API key |
-| `socialbu config get-key` | Show stored API key |
-| `socialbu config reset` | Remove stored config |
-| `socialbu whoami` | Show current user info |
-| `socialbu account list` | List social accounts |
-| `socialbu account get <id>` | Get account details |
-| `socialbu account delete <id>` | Delete an account |
-| `socialbu post create` | Create a new post |
-| `socialbu post list` | List posts |
-| `socialbu post get <id>` | Get post details |
-| `socialbu post delete <id>` | Delete a post |
-| `socialbu ai generate` | Generate AI content |
-| `socialbu ai autocomplete` | Autocomplete post content |
-| `socialbu team list` | List teams |
-| `socialbu team create` | Create a team |
-| `socialbu team delete <id>` | Delete a team |
-| `socialbu analytics stats` | User stats overview |
-| `socialbu analytics followers` | Followers count |
-| `socialbu analytics engagement` | Engagement rate |
-| `socialbu notifications list` | List notifications |
-| `socialbu notifications unread` | List unread notifications |
-| `socialbu curate topics` | List curation topics |
-| `socialbu curate items` | List curated items |
-
-## Global Options
-
-All commands support:
-- `--json` — Output raw JSON instead of formatted tables
-- `--help` — Show help for any command
-
-## Authentication
-
-Get your API token from SocialBu (Settings → API) or generate one:
+## Build
 
 ```bash
-socialbu config set-key YOUR_BEARER_TOKEN
+go build ./...
 ```
 
-The key is stored in `~/.socialbu/config.json`.
+## Quick start
 
-## API Reference
+```bash
+go run . config set-key <your-api-key>
+go run . whoami
+go run . account list
+go run . post list --type scheduled
+go run . post create --accounts 123 --content "Hello" --publish-at "2026-04-21 10:00:00"
+```
 
-Based on the [SocialBu API v1.0.0](https://socialbu.com/developers/docs).
+## Config
 
-## License
+Stored in:
 
-MIT
+```bash
+~/.socialbu/config.json
+```
+
+Supported env vars:
+
+```bash
+SOCIALBU_API_KEY
+SOCIALBU_BASE_URL
+```
+
+## Release automation
+
+GitHub Actions + GoReleaser are configured for tagged releases across:
+- macOS: amd64, arm64
+- Linux: amd64, arm64
+- Windows: amd64, arm64
+
+Cut a release by pushing a semver tag:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+## Next targets
+
+- Capture real `--json` fixtures into `artifacts/samples/` and replace remaining fallback field guesses with exact mappings
+- Improve response shaping and table rendering per endpoint
+- Add higher-level UX polish around analytics, AI, notifications, curation, and media flows
+- Decide whether to remove the legacy Node source tree once the Go CLI fully replaces it
+
+## Fixture capture workflow
+
+When a valid API key is available, capture real endpoint responses before changing renderer assumptions:
+
+```bash
+cd /root/.openclaw/workspace/worktrees/socialbu-cli-go-cobra-recover
+go run . fixtures capture > /tmp/socialbu-capture.sh
+bash /tmp/socialbu-capture.sh
+```
+
+This prints a deterministic script that writes the current fixture set into `artifacts/samples/`, including the endpoints that still need manual IDs or keys filled in. The generated script now reuses `~/.socialbu/config.json` automatically when `SOCIALBU_API_KEY` is not exported, so a previously saved key works without extra shell setup.
+
+A fuller endpoint checklist lives in `artifacts/socialbu-cli-fixture-capture-plan-2026-04-21-0622.md`.
