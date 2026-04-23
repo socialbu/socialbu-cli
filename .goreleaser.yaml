@@ -30,6 +30,7 @@ archives:
       - socialbu
     formats:
       - binary
+    name_template: "{{ .Binary }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
   name_template: checksums.txt

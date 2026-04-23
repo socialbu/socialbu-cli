@@ -19,8 +19,8 @@ It uses the same API key as your SocialBu account and stores config in `~/.socia
 Download the right binary from the GitHub Releases page and make it executable on macOS or Linux.
 
 ```bash
-chmod +x ./socialbu_0.1.1_linux_amd64
-mv ./socialbu_0.1.1_linux_amd64 /usr/local/bin/socialbu
+chmod +x ./socialbu_<VERSION>_linux_amd64
+sudo mv ./socialbu_<VERSION>_linux_amd64 /usr/local/bin/socialbu
 ```
 
 Windows releases ship as `.exe` binaries.
@@ -58,8 +58,8 @@ GitHub Actions + GoReleaser publish standalone binaries for:
 Cut a release by pushing a semver tag:
 
 ```bash
-git tag v0.1.1
-git push origin v0.1.1
+git tag vX.Y.Z
+git push origin vX.Y.Z
 ```
 
 ## Fixture capture workflow
