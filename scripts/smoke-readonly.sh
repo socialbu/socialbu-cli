@@ -42,4 +42,8 @@ run_optional --json notifications unread
 run_optional --json curation topics
 run_optional --json curation items --per-page 5
 run_optional --json analytics stats
+run_optional --json analytics followers
+run_optional --json analytics engagement-rate
+run_optional --json analytics inbox-unread-count
+run_optional --json analytics automation-logs --limit 5
 run_optional --json analytics team-activity --limit 5

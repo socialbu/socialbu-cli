@@ -13,7 +13,14 @@ import (
 func newAnalyticsCmd() *cobra.Command {
 	cmd := &cobra.Command{Use: "analytics", Short: "Inspect SocialBu insights and analytics"}
 	cmd.AddCommand(newAnalyticsPostsCountCmd())
+	cmd.AddCommand(newAnalyticsPostsMetricsCmd())
+	cmd.AddCommand(newAnalyticsTopPostsCmd())
+	cmd.AddCommand(newAnalyticsAccountsMetricsCmd())
+	cmd.AddCommand(newAnalyticsFollowersCmd())
 	cmd.AddCommand(newAnalyticsEngagementTrendCmd())
+	cmd.AddCommand(newAnalyticsEngagementRateCmd())
+	cmd.AddCommand(newAnalyticsInboxUnreadCountCmd())
+	cmd.AddCommand(newAnalyticsAutomationLogsCmd())
 	cmd.AddCommand(newAnalyticsFollowersGrowthCmd())
 	cmd.AddCommand(newAnalyticsTeamMetricsCmd())
 	cmd.AddCommand(newAnalyticsTeamActivityCmd())
@@ -50,6 +57,112 @@ func newAnalyticsPostsCountCmd() *cobra.Command {
 	return cmd
 }
 
+func newAnalyticsPostsMetricsCmd() *cobra.Command {
+	var start, end, postType, metrics string
+	var accounts []int
+	var team int
+	cmd := &cobra.Command{
+		Use:   "posts-metrics",
+		Short: "Get date-wise post metrics",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if start == "" || end == "" || strings.TrimSpace(postType) == "" || strings.TrimSpace(metrics) == "" {
+				return fmt.Errorf("--start, --end, --post-type, and --metrics are required")
+			}
+			q := dateRangeQuery(start, end)
+			q.Set("post_type", postType)
+			q.Set("metrics", metrics)
+			q = addOptionalInt(q, "team", team)
+			q = addIntSlice(q, "accounts", accounts)
+			var resp map[string]any
+			if err := analyticsRequest("/insights/posts/metrics", q, &resp); err != nil {
+				return err
+			}
+			return output.JSON(resp)
+		},
+	}
+	addDateRangeFlags(cmd, &start, &end)
+	cmd.Flags().StringVar(&postType, "post-type", "", "post type: image, video, text")
+	cmd.Flags().StringVar(&metrics, "metrics", "", "comma-separated metric names")
+	cmd.Flags().IntSliceVar(&accounts, "accounts", nil, "account IDs")
+	cmd.Flags().IntVar(&team, "team", 0, "team ID")
+	return cmd
+}
+
+func newAnalyticsTopPostsCmd() *cobra.Command {
+	var start, end, metrics string
+	var accounts []int
+	var team int
+	cmd := &cobra.Command{
+		Use:   "top-posts",
+		Short: "Get top posts ranked by metrics",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if start == "" || end == "" || strings.TrimSpace(metrics) == "" {
+				return fmt.Errorf("--start, --end, and --metrics are required")
+			}
+			q := dateRangeQuery(start, end)
+			q.Set("metrics", metrics)
+			q = addOptionalInt(q, "team", team)
+			q = addIntSlice(q, "accounts", accounts)
+			var resp map[string]any
+			if err := analyticsRequest("/insights/posts/top_posts", q, &resp); err != nil {
+				return err
+			}
+			return output.JSON(resp)
+		},
+	}
+	addDateRangeFlags(cmd, &start, &end)
+	cmd.Flags().StringVar(&metrics, "metrics", "", "comma-separated metric names used for ranking")
+	cmd.Flags().IntSliceVar(&accounts, "accounts", nil, "account IDs")
+	cmd.Flags().IntVar(&team, "team", 0, "team ID")
+	return cmd
+}
+
+func newAnalyticsAccountsMetricsCmd() *cobra.Command {
+	var start, end, metrics string
+	var accounts []int
+	var team int
+	var calculateGrowth bool
+	cmd := &cobra.Command{
+		Use:   "accounts-metrics",
+		Short: "Get date-wise account metrics",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if start == "" || end == "" || strings.TrimSpace(metrics) == "" {
+				return fmt.Errorf("--start, --end, and --metrics are required")
+			}
+			q := dateRangeQuery(start, end)
+			q.Set("metrics", metrics)
+			q.Set("calculate_growth", fmt.Sprintf("%t", calculateGrowth))
+			q = addOptionalInt(q, "team", team)
+			q = addIntSlice(q, "accounts", accounts)
+			var resp map[string]any
+			if err := analyticsRequest("/insights/accounts/metrics", q, &resp); err != nil {
+				return err
+			}
+			return output.JSON(resp)
+		},
+	}
+	addDateRangeFlags(cmd, &start, &end)
+	cmd.Flags().StringVar(&metrics, "metrics", "", "comma-separated metric names")
+	cmd.Flags().BoolVar(&calculateGrowth, "calculate-growth", true, "include growth calculations")
+	cmd.Flags().IntSliceVar(&accounts, "accounts", nil, "account IDs")
+	cmd.Flags().IntVar(&team, "team", 0, "team ID")
+	return cmd
+}
+
+func newAnalyticsFollowersCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "followers",
+		Short: "Get total followers across accessible accounts",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var resp map[string]any
+			if err := analyticsRequest("/insights/accounts/followers", nil, &resp); err != nil {
+				return err
+			}
+			return renderAnalyticsStats(resp)
+		},
+	}
+}
+
 func newAnalyticsEngagementTrendCmd() *cobra.Command {
 	var start, end string
 	cmd := &cobra.Command{
@@ -67,6 +180,55 @@ func newAnalyticsEngagementTrendCmd() *cobra.Command {
 		},
 	}
 	addDateRangeFlags(cmd, &start, &end)
+	return cmd
+}
+
+func newAnalyticsEngagementRateCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "engagement-rate",
+		Short: "Get total engagement rate across accessible accounts",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var resp map[string]any
+			if err := analyticsRequest("/insights/accounts/engagement/rate", nil, &resp); err != nil {
+				return err
+			}
+			return renderAnalyticsStats(resp)
+		},
+	}
+}
+
+func newAnalyticsInboxUnreadCountCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "inbox-unread-count",
+		Short: "Get open social inbox message count",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var resp map[string]any
+			if err := analyticsRequest("/insights/inbox/unread-count", nil, &resp); err != nil {
+				return err
+			}
+			return renderAnalyticsStats(resp)
+		},
+	}
+}
+
+func newAnalyticsAutomationLogsCmd() *cobra.Command {
+	var limit int
+	cmd := &cobra.Command{
+		Use:   "automation-logs",
+		Short: "Get recent automation activity logs",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			q := url.Values{}
+			if limit > 0 {
+				q.Set("limit", fmt.Sprintf("%d", limit))
+			}
+			var resp map[string]any
+			if err := analyticsRequest("/insights/automations/logs", q, &resp); err != nil {
+				return err
+			}
+			return output.JSON(resp)
+		},
+	}
+	cmd.Flags().IntVar(&limit, "limit", 5, "maximum number of automation logs")
 	return cmd
 }
 
