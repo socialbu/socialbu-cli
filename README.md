@@ -10,6 +10,11 @@ The current CLI supports:
 - `account list|get`
 - `post list|get|create`
 - `team list|create|delete`
+- `analytics posts-count|posts-metrics|top-posts|accounts-metrics|followers|followers-growth|engagement-rate|engagement-trend|inbox-unread-count|automation-logs|team-metrics|team-activity|stats`
+- `ai generate|from-post|autocomplete`
+- `notifications list|unread|get|mark-read|mark-unread|mark-all-read`
+- `curation topics|items|get`
+- `media upload|status`
 - `fixtures capture`
 
 It uses the same API key as your SocialBu account and stores config in `~/.socialbu/config.json`.
@@ -77,4 +82,4 @@ bash /tmp/socialbu-capture.sh
 
 The generated script resolves the repo root automatically, writes the current fixture set into `artifacts/samples/`, and reuses `~/.socialbu/config.json` when `SOCIALBU_API_KEY` is not exported.
 
-The smoke workflow runs `./scripts/smoke-readonly.sh` when the `SOCIALBU_TEST_KEY` repository secret is configured. The suite covers non-mutating identity, accounts, posts, teams, notifications, curation, and analytics commands.
+The smoke workflow runs `./scripts/smoke-readonly.sh` when the `SOCIALBU_TEST_KEY` repository secret is configured. The suite covers non-mutating identity, accounts, posts, teams, notifications, curation, analytics, inbox-count, and automation-log commands.
