@@ -1,0 +1,32 @@
+name: smoke
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  HAS_SOCIALBU_TEST_KEY: ${{ secrets.SOCIALBU_TEST_KEY != '' }}
+
+permissions:
+  contents: read
+
+jobs:
+  whoami-smoke:
+    runs-on: ubuntu-latest
+    env:
+      SOCIALBU_API_KEY: ${{ secrets.SOCIALBU_TEST_KEY }}
+    steps:
+      - name: Checkout
+        if: ${{ env.HAS_SOCIALBU_TEST_KEY == 'true' }}
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        if: ${{ env.HAS_SOCIALBU_TEST_KEY == 'true' }}
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run whoami smoke test
+        if: ${{ env.HAS_SOCIALBU_TEST_KEY == 'true' }}
+        run: go run . whoami

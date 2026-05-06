@@ -62,6 +62,10 @@ git tag vX.Y.Z
 git push origin vX.Y.Z
 ```
 
+## Smoke workflow
+
+`.github/workflows/smoke.yml` runs `go run . whoami` on pull requests and manual dispatch only when the `SOCIALBU_TEST_KEY` GitHub secret is configured. The workflow passes that secret through `SOCIALBU_API_KEY` without printing it.
+
 ## Fixture capture workflow
 
 When a valid API key is available, capture real endpoint responses before changing renderer assumptions:
