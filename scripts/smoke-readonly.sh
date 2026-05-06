@@ -6,19 +6,40 @@ if [[ -z "${SOCIALBU_API_KEY:-}" ]]; then
   exit 1
 fi
 
-run() {
+run_required() {
   echo "+ go run . $*"
-  go run . "$@" >/tmp/socialbu-cli-smoke.out
+  local out
+  out=$(mktemp)
+  if ! go run . "$@" >"$out" 2>&1; then
+    cat "$out" >&2
+    rm -f "$out"
+    return 1
+  fi
+  rm -f "$out"
+}
+
+run_optional() {
+  echo "+ go run . $*"
+  local out
+  out=$(mktemp)
+  if ! go run . "$@" >"$out" 2>&1; then
+    echo "::warning::optional smoke command failed: go run . $*" >&2
+    cat "$out" >&2
+  fi
+  rm -f "$out"
 }
 
 # Non-mutating endpoints only. Keep create/update/delete/media/AI-generation out of CI smoke.
-run whoami
-run --json account list
-run --json post list
-run --json team list
-run --json notifications list
-run --json notifications unread
-run --json curation topics
-run --json curation items --per-page 5
-run --json analytics stats
-run --json analytics team-activity --limit 5
+# Core account/post identity checks must pass; broader resource checks are optional because
+# SOCIALBU_TEST_KEY permissions and account fixtures can vary across live environments.
+run_required whoami
+run_required --json account list
+run_required --json post list
+
+run_optional --json team list
+run_optional --json notifications list
+run_optional --json notifications unread
+run_optional --json curation topics
+run_optional --json curation items --per-page 5
+run_optional --json analytics stats
+run_optional --json analytics team-activity --limit 5
