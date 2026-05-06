@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -16,6 +17,23 @@ type team struct {
 
 type teamsResponse struct {
 	Data []team `json:"data"`
+}
+
+func (r *teamsResponse) UnmarshalJSON(data []byte) error {
+	var wrapped struct {
+		Data []team `json:"data"`
+	}
+	if err := json.Unmarshal(data, &wrapped); err == nil && wrapped.Data != nil {
+		r.Data = wrapped.Data
+		return nil
+	}
+
+	var teams []team
+	if err := json.Unmarshal(data, &teams); err != nil {
+		return err
+	}
+	r.Data = teams
+	return nil
 }
 
 func newTeamsCmd() *cobra.Command {
