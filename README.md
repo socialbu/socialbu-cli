@@ -76,3 +76,5 @@ bash /tmp/socialbu-capture.sh
 ```
 
 The generated script resolves the repo root automatically, writes the current fixture set into `artifacts/samples/`, and reuses `~/.socialbu/config.json` when `SOCIALBU_API_KEY` is not exported.
+
+The smoke workflow runs `./scripts/smoke-readonly.sh` when the `SOCIALBU_TEST_KEY` repository secret is configured. The suite covers non-mutating identity, accounts, posts, teams, notifications, curation, and analytics commands.

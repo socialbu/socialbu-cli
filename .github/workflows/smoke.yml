@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  whoami-smoke:
+  readonly-smoke:
     runs-on: ubuntu-latest
     env:
       SOCIALBU_API_KEY: ${{ secrets.SOCIALBU_TEST_KEY }}
@@ -27,6 +27,6 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Run whoami smoke test
+      - name: Run read-only smoke suite
         if: ${{ env.HAS_SOCIALBU_TEST_KEY == 'true' }}
-        run: go run . whoami
+        run: ./scripts/smoke-readonly.sh
