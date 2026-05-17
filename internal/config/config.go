@@ -48,21 +48,33 @@ func Init() error {
 }
 
 func Current() Config {
+	baseURL := strings.TrimRight(strings.TrimSpace(viper.GetString("base_url")), "/")
+	if baseURL == "" {
+		baseURL = defaultBaseURL
+	}
 	return Config{
 		APIKey:  strings.TrimSpace(viper.GetString("api_key")),
-		BaseURL: strings.TrimRight(strings.TrimSpace(viper.GetString("base_url")), "/"),
+		BaseURL: baseURL,
 	}
 }
 
 func Save(cfg Config) error {
+	baseURL := strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
+	if baseURL == "" {
+		baseURL = defaultBaseURL
+	}
 	viper.Set("api_key", strings.TrimSpace(cfg.APIKey))
-	viper.Set("base_url", strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/"))
+	viper.Set("base_url", baseURL)
 	if viper.ConfigFileUsed() == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
 			return fmt.Errorf("resolve home dir: %w", err)
 		}
-		viper.SetConfigFile(filepath.Join(home, configDirName, configName+".json"))
+		configDir := filepath.Join(home, configDirName)
+		if err := os.MkdirAll(configDir, 0o755); err != nil {
+			return fmt.Errorf("create config dir: %w", err)
+		}
+		viper.SetConfigFile(filepath.Join(configDir, configName+".json"))
 	}
 	return viper.WriteConfigAs(viper.ConfigFileUsed())
 }
