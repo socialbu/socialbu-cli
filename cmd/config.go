@@ -9,7 +9,13 @@ import (
 )
 
 func newConfigCmd() *cobra.Command {
-	cmd := &cobra.Command{Use: "config", Short: "Manage CLI config"}
+	cmd := &cobra.Command{
+		Use:   "config",
+		Short: "Manage CLI config",
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			return ensureConfig()
+		},
+	}
 
 	cmd.AddCommand(&cobra.Command{
 		Use:   "set-key <api-key>",
