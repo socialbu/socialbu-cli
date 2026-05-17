@@ -68,10 +68,10 @@ git push origin vX.Y.Z
 ```
 
 If local GitHub auth is unavailable, run the `release` workflow manually and provide:
-- `tag`: the semver tag to create, for example `v0.1.2`
+- `tag`: the `vMAJOR.MINOR.PATCH` tag to create, for example `v0.1.2`
 - `target`: the commit SHA or branch to tag, for example `94398c6c6080269f7d38104f69c7da1617d4d196`
 
-The manual workflow creates the annotated tag in GitHub Actions, pushes it, runs tests, and publishes the GoReleaser binaries.
+The manual workflow creates the annotated tag in GitHub Actions, pushes it, runs tests, and publishes the GoReleaser binaries. If a rerun finds that the tag already points to the selected target, it continues instead of failing.
 
 ## Smoke workflow
 
