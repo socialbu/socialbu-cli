@@ -67,6 +67,12 @@ git tag vX.Y.Z
 git push origin vX.Y.Z
 ```
 
+If local GitHub auth is unavailable, run the `release` workflow manually and provide:
+- `tag`: the semver tag to create, for example `v0.1.2`
+- `target`: the commit SHA or branch to tag, for example `94398c6c6080269f7d38104f69c7da1617d4d196`
+
+The manual workflow creates the annotated tag in GitHub Actions, pushes it, runs tests, and publishes the GoReleaser binaries.
+
 ## Smoke workflow
 
 `.github/workflows/smoke.yml` runs `go run . whoami` on pull requests and manual dispatch only when the `SOCIALBU_TEST_KEY` GitHub secret is configured. The workflow passes that secret through `SOCIALBU_API_KEY` without printing it.
