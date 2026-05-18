@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -12,14 +13,15 @@ import (
 type account struct {
 	ID       int    `json:"id"`
 	Name     string `json:"name"`
-	Username string `json:"username"`
+	Platform string `json:"platform"`
 	Type     string `json:"type"`
 	Status   string `json:"status"`
 }
 
 func newAccountsCmd() *cobra.Command {
 	cmd := &cobra.Command{Use: "account", Aliases: []string{"accounts"}, Short: "Manage social accounts"}
-	cmd.AddCommand(&cobra.Command{
+	var accountType string
+	listCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List accounts",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -27,8 +29,12 @@ func newAccountsCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			q := url.Values{}
+			if accountType != "" {
+				q.Add("type", accountType)
+			}
 			var raw any
-			if err := cli.Request(context.Background(), "GET", "/accounts", nil, nil, &raw); err != nil {
+			if err := cli.Request(context.Background(), "GET", "/accounts", q, nil, &raw); err != nil {
 				return err
 			}
 			accounts := make([]account, 0)
@@ -42,7 +48,7 @@ func newAccountsCmd() *cobra.Command {
 					accounts = append(accounts, account{
 						ID:       output.IntFromMap(m, "id"),
 						Name:     output.StringFromMap(m, "name"),
-						Username: output.StringFromMap(m, "username", "handle"),
+						Platform: output.StringFromMap(m, "provider", "platform"),
 						Type:     output.StringFromMap(m, "type", "account_type"),
 						Status:   output.StringFromMap(m, "status"),
 					})
@@ -53,7 +59,7 @@ func newAccountsCmd() *cobra.Command {
 					accounts = append(accounts, account{
 						ID:       output.IntFromMap(m, "id"),
 						Name:     output.StringFromMap(m, "name"),
-						Username: output.StringFromMap(m, "username", "handle"),
+						Platform: output.StringFromMap(m, "provider", "platform"),
 						Type:     output.StringFromMap(m, "type", "account_type"),
 						Status:   output.StringFromMap(m, "status"),
 					})
@@ -64,12 +70,14 @@ func newAccountsCmd() *cobra.Command {
 			}
 			rows := make([][]string, 0, len(accounts))
 			for _, a := range accounts {
-				rows = append(rows, []string{strconv.Itoa(a.ID), a.Name, a.Username, a.Type, a.Status})
+				rows = append(rows, []string{strconv.Itoa(a.ID), a.Name, a.Type, a.Platform, a.Status})
 			}
-			output.Table([]string{"ID", "Name", "Username", "Type", "Status"}, rows)
+			output.Table([]string{"ID", "Name", "Type", "Platform", "Status"}, rows)
 			return nil
 		},
-	})
+	}
+	listCmd.Flags().StringVar(&accountType, "type", "all", "filter by account type: all, user, or shared")
+	cmd.AddCommand(listCmd)
 	cmd.AddCommand(&cobra.Command{
 		Use:   "get <id>",
 		Short: "Get account details",
