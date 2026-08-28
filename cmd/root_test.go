@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/usamaejaz/socialbu-cli/internal/config"
+	"github.com/socialbu/socialbu-cli/internal/config"
 )
 
 func TestVersionCommandShowsBuildMetadata(t *testing.T) {

@@ -1,4 +1,4 @@
-module github.com/usamaejaz/socialbu-cli
+module github.com/socialbu/socialbu-cli
 
 go 1.26.7
 

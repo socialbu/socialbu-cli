@@ -3,9 +3,9 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/socialbu/socialbu-cli/internal/config"
+	"github.com/socialbu/socialbu-cli/internal/output"
 	"github.com/spf13/cobra"
-	"github.com/usamaejaz/socialbu-cli/internal/config"
-	"github.com/usamaejaz/socialbu-cli/internal/output"
 )
 
 func newConfigCmd() *cobra.Command {

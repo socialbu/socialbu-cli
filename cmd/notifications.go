@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/socialbu/socialbu-cli/internal/output"
 	"github.com/spf13/cobra"
-	"github.com/usamaejaz/socialbu-cli/internal/output"
 )
 
 func newNotificationsCmd() *cobra.Command {

@@ -21,14 +21,14 @@ It uses the same API key as your SocialBu account and stores config in `~/.socia
 
 ## Install
 
-The repository is currently private, so anonymous release downloads are unavailable. The commands below are ready for public releases. Maintainers can test the checked-out scripts against private releases by setting `GITHUB_TOKEN` to a token with read access.
+Release downloads are public. The installer scripts verify the release checksum before installing the binary.
 
 ### macOS and Linux
 
 The installer detects your operating system and architecture, verifies the release checksum, and installs `socialbu` into `/usr/local/bin` or `~/.local/bin`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/usamaejaz/socialbu-cli/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/socialbu/socialbu-cli/main/scripts/install.sh | sh
 ```
 
 ### Windows
@@ -36,7 +36,7 @@ curl -fsSL https://raw.githubusercontent.com/usamaejaz/socialbu-cli/main/scripts
 The PowerShell installer verifies the release checksum, installs `socialbu.exe` under your local application data directory, and adds it to your user `PATH`:
 
 ```powershell
-irm https://raw.githubusercontent.com/usamaejaz/socialbu-cli/main/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/socialbu/socialbu-cli/main/scripts/install.ps1 | iex
 ```
 
 ### Go
@@ -44,8 +44,24 @@ irm https://raw.githubusercontent.com/usamaejaz/socialbu-cli/main/scripts/instal
 If you already have Go installed:
 
 ```bash
-go install github.com/usamaejaz/socialbu-cli@latest
+go install github.com/socialbu/socialbu-cli@latest
 ```
+
+### Homebrew
+
+```bash
+brew tap socialbu/cli https://github.com/socialbu/socialbu-cli
+brew install --cask socialbu/cli/socialbu
+```
+
+### Scoop
+
+```powershell
+scoop bucket add socialbu https://github.com/socialbu/socialbu-cli
+scoop install socialbu/socialbu
+```
+
+Homebrew, Scoop, WinGet, and Chocolatey packages are generated from the same checksummed release archives. WinGet and Chocolatey commands will be listed here after their public catalog submissions are accepted.
 
 ### Manual download
 

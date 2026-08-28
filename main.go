@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/usamaejaz/socialbu-cli/cmd"
+	"github.com/socialbu/socialbu-cli/cmd"
 )
 
 var (

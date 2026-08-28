@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/socialbu/socialbu-cli/internal/client"
+	"github.com/socialbu/socialbu-cli/internal/config"
 	"github.com/spf13/cobra"
-	"github.com/usamaejaz/socialbu-cli/internal/client"
-	"github.com/usamaejaz/socialbu-cli/internal/config"
 )
 
 var (

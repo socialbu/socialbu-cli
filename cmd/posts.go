@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/socialbu/socialbu-cli/internal/output"
 	"github.com/spf13/cobra"
-	"github.com/usamaejaz/socialbu-cli/internal/output"
 )
 
 type post struct {

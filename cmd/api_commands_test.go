@@ -8,7 +8,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/usamaejaz/socialbu-cli/internal/config"
+	"github.com/socialbu/socialbu-cli/internal/config"
 )
 
 func withTestAPI(t *testing.T, handler http.HandlerFunc) *httptest.Server {

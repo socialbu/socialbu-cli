@@ -6,7 +6,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$repository = "usamaejaz/socialbu-cli"
+$repository = "socialbu/socialbu-cli"
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
     $Version = "latest"

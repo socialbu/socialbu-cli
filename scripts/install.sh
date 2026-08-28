@@ -2,7 +2,7 @@
 
 set -eu
 
-repository="usamaejaz/socialbu-cli"
+repository="socialbu/socialbu-cli"
 version="${SOCIALBU_VERSION:-latest}"
 install_dir="${SOCIALBU_INSTALL_DIR:-}"
 github_token="${GITHUB_TOKEN:-}"

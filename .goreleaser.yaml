@@ -52,3 +52,72 @@ changelog:
 release:
   draft: false
   prerelease: auto
+
+homebrew_casks:
+  - name: socialbu
+    ids:
+      - packages
+    binaries:
+      - socialbu
+    homepage: https://socialbu.com/
+    description: SocialBu CLI for accounts, posts, analytics, and more.
+    skip_upload: auto
+    repository:
+      owner: socialbu
+      name: socialbu-cli
+      branch: main
+    commit_author:
+      name: socialbu-release-bot
+      email: 41898282+github-actions[bot]@users.noreply.github.com
+
+scoops:
+  - name: socialbu
+    ids:
+      - packages
+    homepage: https://socialbu.com/
+    description: SocialBu CLI for accounts, posts, analytics, and more.
+    license: Proprietary
+    skip_upload: auto
+    repository:
+      owner: socialbu
+      name: socialbu-cli
+      branch: main
+    commit_author:
+      name: socialbu-release-bot
+      email: 41898282+github-actions[bot]@users.noreply.github.com
+
+winget:
+  - name: socialbu
+    package_name: SocialBu CLI
+    package_identifier: SocialBu.SocialBuCLI
+    publisher: SocialBu
+    publisher_url: https://socialbu.com/
+    publisher_support_url: https://github.com/socialbu/socialbu-cli/issues
+    privacy_url: https://socialbu.com/about/privacy
+    author: SocialBu
+    short_description: Manage SocialBu accounts, posts, analytics, and more from the command line.
+    description: A command-line client for managing SocialBu accounts, posts, teams, analytics, notifications, curated content, media, and AI features.
+    homepage: https://github.com/socialbu/socialbu-cli
+    license: Proprietary
+    license_url: https://socialbu.com/about/terms
+    copyright: Copyright SocialBu
+    ids:
+      - packages
+    tags:
+      - social-media
+      - socialbu
+      - cli
+    release_notes_url: https://github.com/socialbu/socialbu-cli/releases/tag/{{ .Tag }}
+    skip_upload: true
+    repository:
+      owner: usamaejaz
+      name: winget-pkgs
+      pull_request:
+        enabled: true
+        base:
+          owner: microsoft
+          name: winget-pkgs
+          branch: master
+    commit_author:
+      name: socialbu-release-bot
+      email: 41898282+github-actions[bot]@users.noreply.github.com

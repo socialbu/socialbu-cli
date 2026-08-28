@@ -83,6 +83,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Preserve WinGet manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: winget-manifests-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          path: dist/winget
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Attest release artifacts
         if: ${{ !github.event.repository.private }}
         uses: actions/attest@v4
@@ -129,3 +137,95 @@ jobs:
           if ($versionOutput -notcontains "socialbu $($env:RELEASE_VERSION.TrimStart('v'))") {
             throw "Installed binary did not report the expected version"
           }
+
+  validate-packages:
+    needs: goreleaser
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    env:
+      RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    steps:
+      - name: Validate Homebrew package
+        if: runner.os == 'macOS'
+        run: |
+          brew tap socialbu/cli https://github.com/socialbu/socialbu-cli
+          brew install --cask socialbu/cli/socialbu
+          socialbu version | grep "socialbu ${RELEASE_VERSION#v}"
+
+      - name: Validate Scoop package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Invoke-Expression "& {$(Invoke-RestMethod https://get.scoop.sh)} -RunAsAdmin"
+          scoop bucket add socialbu https://github.com/socialbu/socialbu-cli
+          scoop install socialbu/socialbu
+          $versionOutput = socialbu version
+          $version = $env:RELEASE_VERSION.TrimStart('v')
+          if ($versionOutput -notcontains "socialbu $version") {
+            throw "Scoop package did not install the expected version"
+          }
+
+  chocolatey:
+    needs: goreleaser
+    permissions:
+      contents: write
+    runs-on: windows-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
+      RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    steps:
+      - name: Checkout release
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build Chocolatey package
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --clean --skip=publish --config .goreleaser.chocolatey.yaml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Test Chocolatey package
+        shell: pwsh
+        run: |
+          $version = $env:RELEASE_VERSION.TrimStart('v')
+          $source = (Resolve-Path dist).Path
+          choco install socialbu --version $version --source $source --yes --no-progress
+          $versionOutput = socialbu version
+          if ($versionOutput -notcontains "socialbu $version") {
+            throw "Chocolatey package did not install the expected version"
+          }
+
+      - name: Attach Chocolatey package to release
+        shell: pwsh
+        run: |
+          $package = Get-ChildItem dist -Filter '*.nupkg' | Select-Object -First 1
+          if (-not $package) {
+            throw "GoReleaser did not produce a Chocolatey package"
+          }
+          gh release upload $env:RELEASE_VERSION $package.FullName --clobber
+
+      - name: Publish Chocolatey package
+        if: env.CHOCOLATEY_API_KEY != ''
+        shell: pwsh
+        run: |
+          $package = Get-ChildItem dist -Filter '*.nupkg' | Select-Object -First 1
+          choco push $package.FullName --source https://push.chocolatey.org/ --api-key $env:CHOCOLATEY_API_KEY
