@@ -84,7 +84,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Preserve WinGet manifests
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: winget-manifests-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
           path: dist/winget
@@ -185,23 +185,44 @@ jobs:
       - name: Checkout release
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-          cache: true
-
       - name: Build Chocolatey package
-        uses: goreleaser/goreleaser-action@v7
-        with:
-          distribution: goreleaser
-          version: '~> v2'
-          args: release --clean --skip=publish --config .goreleaser.chocolatey.yaml
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          $version = $env:RELEASE_VERSION.TrimStart('v')
+          $archiveName = "socialbu_${version}_windows_amd64.zip"
+          $releaseDir = Join-Path $env:RUNNER_TEMP "socialbu-release"
+          New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
+          gh release download $env:RELEASE_VERSION --repo socialbu/socialbu-cli --pattern $archiveName --pattern checksums.txt --dir $releaseDir
+
+          $checksumLine = Get-Content (Join-Path $releaseDir "checksums.txt") |
+            Where-Object { $_ -match "\s+$([regex]::Escape($archiveName))$" } |
+            Select-Object -First 1
+          if (-not $checksumLine) {
+            throw "Release checksums do not contain $archiveName"
+          }
+
+          $checksum = ($checksumLine -split '\s+')[0].ToLowerInvariant()
+          $actualChecksum = (Get-FileHash (Join-Path $releaseDir $archiveName) -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actualChecksum -ne $checksum) {
+            throw "Published archive does not match checksums.txt"
+          }
+
+          $packageDir = Join-Path $env:RUNNER_TEMP "socialbu-chocolatey"
+          Copy-Item packaging/chocolatey -Destination $packageDir -Recurse
+          $nuspec = Join-Path $packageDir "socialbu.nuspec"
+          $installScript = Join-Path $packageDir "tools/chocolateyinstall.ps1"
+          (Get-Content $nuspec -Raw).Replace('__VERSION__', $version) |
+            Set-Content $nuspec -NoNewline
+          $installContent = (Get-Content $installScript -Raw).Replace('__VERSION__', $version).Replace('__CHECKSUM64__', $checksum)
+          Set-Content $installScript $installContent -NoNewline
+
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          choco pack $nuspec --outputdirectory dist
+          if ($LASTEXITCODE -ne 0) {
+            throw "Chocolatey package creation failed"
+          }
 
       - name: Test Chocolatey package
         shell: pwsh
@@ -209,6 +230,9 @@ jobs:
           $version = $env:RELEASE_VERSION.TrimStart('v')
           $source = (Resolve-Path dist).Path
           choco install socialbu --version $version --source $source --yes --no-progress
+          if ($LASTEXITCODE -ne 0) {
+            throw "Chocolatey package installation failed"
+          }
           $versionOutput = socialbu version
           if ($versionOutput -notcontains "socialbu $version") {
             throw "Chocolatey package did not install the expected version"
@@ -219,7 +243,7 @@ jobs:
         run: |
           $package = Get-ChildItem dist -Filter '*.nupkg' | Select-Object -First 1
           if (-not $package) {
-            throw "GoReleaser did not produce a Chocolatey package"
+            throw "The release workflow did not produce a Chocolatey package"
           }
           gh release upload $env:RELEASE_VERSION $package.FullName --clobber
 

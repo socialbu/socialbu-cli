@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>socialbu</id>
+    <version>__VERSION__</version>
+    <packageSourceUrl>https://github.com/socialbu/socialbu-cli</packageSourceUrl>
+    <owners>Glaxosoft LLC</owners>
+    <title>SocialBu CLI</title>
+    <authors>SocialBu</authors>
+    <projectUrl>https://socialbu.com/</projectUrl>
+    <copyright>Copyright SocialBu</copyright>
+    <licenseUrl>https://socialbu.com/about/terms</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectSourceUrl>https://github.com/socialbu/socialbu-cli</projectSourceUrl>
+    <docsUrl>https://github.com/socialbu/socialbu-cli#readme</docsUrl>
+    <bugTrackerUrl>https://github.com/socialbu/socialbu-cli/issues</bugTrackerUrl>
+    <tags>socialbu social-media cli</tags>
+    <summary>Manage SocialBu from the command line.</summary>
+    <description>A command-line client for managing SocialBu accounts, posts, teams, analytics, notifications, curated content, media, and AI features.</description>
+    <releaseNotes>https://github.com/socialbu/socialbu-cli/releases</releaseNotes>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
