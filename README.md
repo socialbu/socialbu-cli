@@ -1,31 +1,10 @@
-# SocialBu CLI
+# socialbu CLI
 
-A fast Go CLI for SocialBu.
-
-## What it does
-
-The current CLI supports:
-- `config`
-- `whoami`
-- `account list|get`
-- `post list|get|create`
-- `team list|create|delete`
-- `analytics posts-count|posts-metrics|top-posts|accounts-metrics|followers|followers-growth|engagement-rate|engagement-trend|automation-logs|team-metrics|team-activity|stats`
-- `ai generate|from-post|autocomplete`
-- `notifications list|unread|get|mark-read|mark-unread|mark-all-read`
-- `curation topics|items|get`
-- `media upload|status`
-- `fixtures capture`
-
-It uses the same API key as your SocialBu account and stores config in `~/.socialbu/config.json`.
+Use [SocialBu](https://socialbu.com) from your terminal, scripts, or AI agents. Manage connected accounts, drafts and scheduled posts, analytics, notifications, curated content, media, teams, and SocialBu AI.
 
 ## Install
 
-Release downloads are public. The installer scripts verify the release checksum before installing the binary.
-
 ### macOS and Linux
-
-The installer detects your operating system and architecture, verifies the release checksum, and installs `socialbu` into `/usr/local/bin` or `~/.local/bin`:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/socialbu/socialbu-cli/main/scripts/install.sh | sh
@@ -33,19 +12,11 @@ curl -fsSL https://raw.githubusercontent.com/socialbu/socialbu-cli/main/scripts/
 
 ### Windows
 
-The PowerShell installer verifies the release checksum, installs `socialbu.exe` under your local application data directory, and adds it to your user `PATH`:
-
 ```powershell
 irm https://raw.githubusercontent.com/socialbu/socialbu-cli/main/scripts/install.ps1 | iex
 ```
 
-### Go
-
-If you already have Go installed:
-
-```bash
-go install github.com/socialbu/socialbu-cli/cmd/socialbu@latest
-```
+Both installers select the right binary for your system and verify its checksum.
 
 ### Homebrew
 
@@ -61,103 +32,131 @@ scoop bucket add socialbu https://github.com/socialbu/socialbu-cli
 scoop install socialbu/socialbu
 ```
 
-Homebrew, Scoop, WinGet, and Chocolatey packages are generated from the same checksummed release archives. WinGet and Chocolatey commands will be listed here after their public catalog submissions are accepted.
-
-### Manual download
-
-Download the right binary or archive from the GitHub Releases page. Raw binaries and `.tar.gz` or `.zip` archives are published for each supported platform.
+### Go
 
 ```bash
-chmod +x ./socialbu_linux_amd64
-sudo mv ./socialbu_linux_amd64 /usr/local/bin/socialbu
+go install github.com/socialbu/socialbu-cli/cmd/socialbu@latest
 ```
 
-Windows releases ship as `.exe` binaries.
+You can also download a binary for macOS, Linux, or Windows from [GitHub Releases](https://github.com/socialbu/socialbu-cli/releases/latest).
 
-## Quick start
+Check the installation:
 
 ```bash
-socialbu config set-key <your-api-key>
+socialbu version
+```
+
+## Connect your SocialBu account
+
+Copy your token from **Settings > API for Developers** in SocialBu, then save it locally:
+
+```bash
+socialbu config set-key YOUR_API_TOKEN
 socialbu whoami
+```
+
+See the [SocialBu API documentation](https://socialbu.com/developers/docs) if you need help finding or creating a token.
+
+Treat the token like a password. Do not commit it, paste it into an issue, or include it in logs. `socialbu config show` confirms whether a token is configured without printing it.
+
+## Start using the CLI
+
+```bash
+# See connected social accounts and their IDs
 socialbu account list
+
+# See scheduled posts
 socialbu post list --type scheduled
-socialbu post create --accounts 123 --content "Hello" --publish-at "2030-01-01 10:00:00" --draft
+
+# See account statistics
+socialbu analytics stats
+
+# See unread notifications
+socialbu notifications unread
 ```
 
-`publish-at` is always UTC and must use `YYYY-MM-DD HH:MM:SS`. Keep `--draft` while testing post creation.
-
-Supported environment variables:
+Add `--json` when another program or agent needs structured output:
 
 ```bash
-SOCIALBU_API_KEY
-SOCIALBU_BASE_URL
+socialbu account list --json
+socialbu analytics stats --json
 ```
 
-Environment variables override stored config for the current process and are never copied into `~/.socialbu/config.json`. On macOS and Linux, the CLI stores that file with mode `0600` inside a `0700` directory.
+## Create a draft or schedule a post
 
-Common write commands:
+Use an account ID from `socialbu account list`. This example creates a draft and does not publish it:
 
 ```bash
-socialbu team create "Marketing" --accounts 123,456
-socialbu media upload --file ./image.png
-socialbu ai autocomplete --account 123 --content "Draft caption"
+socialbu post create \
+  --accounts 123 \
+  --content "Review this before publishing" \
+  --publish-at "2099-01-01 10:00:00" \
+  --draft
 ```
 
-## Build from source
+Remove `--draft` only when you want SocialBu to schedule the post. `--publish-at` uses UTC and the format `YYYY-MM-DD HH:MM:SS`.
 
 ```bash
-go build ./...
+socialbu post create \
+  --accounts 123,456 \
+  --content "This post is ready" \
+  --publish-at "2099-01-01 10:00:00"
 ```
 
-## Test
+## Use with AI agents and automation
+
+For agents, CI, and scripts, pass the token through the `SOCIALBU_API_KEY` environment variable instead of storing it in a repository.
+
+macOS and Linux:
 
 ```bash
-go test -shuffle=on -count=1 ./...
-go vet ./...
-go build ./...
+export SOCIALBU_API_KEY="YOUR_API_TOKEN"
+socialbu whoami --json
 ```
 
-On a CGO-enabled Linux or macOS environment, also run:
+Windows PowerShell:
+
+```powershell
+$env:SOCIALBU_API_KEY = "YOUR_API_TOKEN"
+socialbu whoami --json
+```
+
+Environment variables override local CLI configuration for the current process. Store the value in your agent or CI platform's secret manager.
+
+You can give an agent this instruction:
+
+```text
+Use the socialbu CLI with --json. Start with `socialbu whoami` and
+`socialbu account list`. Do not create, publish, upload, delete, or change
+anything unless I explicitly approve it. When I ask for a post draft, use
+`socialbu post create` with --draft and show me the returned post details.
+Never print or repeat SOCIALBU_API_KEY.
+```
+
+## Commands
+
+| Command | What it does |
+| --- | --- |
+| `socialbu account` | List connected accounts and inspect account details |
+| `socialbu post` | List, inspect, create, and schedule posts |
+| `socialbu analytics` | Read post, account, follower, engagement, automation, and team metrics |
+| `socialbu ai` | Generate or autocomplete content with SocialBu AI |
+| `socialbu notifications` | Read notifications and update their read state |
+| `socialbu curation` | Browse curated topics and content |
+| `socialbu media` | Upload media and check processing status |
+| `socialbu team` | List, create, and delete teams |
+| `socialbu config` | Manage local CLI configuration |
+| `socialbu completion` | Generate shell completions for Bash, Zsh, Fish, or PowerShell |
+
+Run `socialbu --help` to see every command, or ask for help with a specific command:
 
 ```bash
-go test -race ./...
+socialbu post create --help
+socialbu analytics --help
 ```
 
-CI runs tests and builds on Linux, macOS, and Windows. Linux also runs the race detector, enforces at least 80% statement coverage, runs vet, and checks module tidiness.
+## Support
 
-## Releases
-
-GitHub Actions + GoReleaser publish checksummed binaries and archives for each platform. Public releases also receive GitHub artifact attestations.
-- macOS: amd64, arm64
-- Linux: amd64, arm64
-- Windows: amd64, arm64
-
-Cut a release by pushing a semver tag:
-
-```bash
-git tag vX.Y.Z
-git push origin vX.Y.Z
-```
-
-If local GitHub auth is unavailable, run the `release` workflow manually and provide:
-- `tag`: the `vMAJOR.MINOR.PATCH` tag to create, for example `v0.1.2`
-- `target`: the commit SHA or branch to tag, for example `94398c6c6080269f7d38104f69c7da1617d4d196`
-
-The manual workflow creates the annotated tag in GitHub Actions, pushes it, runs tests, and publishes the GoReleaser binaries. If a rerun finds that the tag already points to the selected target, it continues instead of failing.
-
-## Smoke workflow
-
-`.github/workflows/smoke.yml` runs `go run . whoami` on pull requests and manual dispatch only when the `SOCIALBU_TEST_KEY` GitHub secret is configured. The workflow passes that secret through `SOCIALBU_API_KEY` without printing it.
-
-## Fixture capture workflow
-
-When a valid API key is available, capture real endpoint responses before changing renderer assumptions:
-
-```bash
-go run . fixtures capture > /tmp/socialbu-capture.sh
-bash /tmp/socialbu-capture.sh
-```
-
-The generated script resolves the repo root automatically, writes the current fixture set into `artifacts/samples/`, and reuses `~/.socialbu/config.json` when `SOCIALBU_API_KEY` is not exported.
-
-The smoke workflow runs `./scripts/smoke-readonly.sh` when the `SOCIALBU_TEST_KEY` repository secret is configured. The suite covers non-mutating identity, accounts, posts, teams, notifications, curation, and deployed analytics endpoints. It never creates or publishes content.
+- [SocialBu help center](https://help.socialbu.com/)
+- [Report a CLI problem](https://github.com/socialbu/socialbu-cli/issues)
+- [View releases and release notes](https://github.com/socialbu/socialbu-cli/releases)
