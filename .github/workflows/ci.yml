@@ -32,6 +32,26 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Validate shell installer syntax
+        if: runner.os != 'Windows'
+        run: bash -n scripts/install.sh
+
+      - name: Validate PowerShell installer syntax
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'scripts/install.ps1'),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_ }
+            exit 1
+          }
+
       - name: Run tests
         run: go test -shuffle=on -count=1 ./...
 

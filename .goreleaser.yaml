@@ -25,12 +25,22 @@ builds:
       - -s -w -X main.version={{ .Version }} -X main.commit={{ .Commit }} -X main.date={{ .Date }}
 
 archives:
-  - id: default
+  - id: raw-binaries
     ids:
       - socialbu
     formats:
       - binary
     name_template: "{{ .Binary }}_{{ .Os }}_{{ .Arch }}"
+  - id: packages
+    ids:
+      - socialbu
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
   name_template: checksums.txt

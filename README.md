@@ -21,11 +21,39 @@ It uses the same API key as your SocialBu account and stores config in `~/.socia
 
 ## Install
 
-Download the right binary from the GitHub Releases page and make it executable on macOS or Linux.
+The repository is currently private, so anonymous release downloads are unavailable. The commands below are ready for public releases. Maintainers can test the checked-out scripts against private releases by setting `GITHUB_TOKEN` to a token with read access.
+
+### macOS and Linux
+
+The installer detects your operating system and architecture, verifies the release checksum, and installs `socialbu` into `/usr/local/bin` or `~/.local/bin`:
 
 ```bash
-chmod +x ./socialbu_<VERSION>_linux_amd64
-sudo mv ./socialbu_<VERSION>_linux_amd64 /usr/local/bin/socialbu
+curl -fsSL https://raw.githubusercontent.com/usamaejaz/socialbu-cli/main/scripts/install.sh | sh
+```
+
+### Windows
+
+The PowerShell installer verifies the release checksum, installs `socialbu.exe` under your local application data directory, and adds it to your user `PATH`:
+
+```powershell
+irm https://raw.githubusercontent.com/usamaejaz/socialbu-cli/main/scripts/install.ps1 | iex
+```
+
+### Go
+
+If you already have Go installed:
+
+```bash
+go install github.com/usamaejaz/socialbu-cli@latest
+```
+
+### Manual download
+
+Download the right binary or archive from the GitHub Releases page. Raw binaries and `.tar.gz` or `.zip` archives are published for each supported platform.
+
+```bash
+chmod +x ./socialbu_linux_amd64
+sudo mv ./socialbu_linux_amd64 /usr/local/bin/socialbu
 ```
 
 Windows releases ship as `.exe` binaries.
@@ -83,7 +111,7 @@ CI runs tests and builds on Linux, macOS, and Windows. Linux also runs the race 
 
 ## Releases
 
-GitHub Actions + GoReleaser publish standalone binaries for:
+GitHub Actions + GoReleaser publish checksummed binaries and archives for each platform. Public releases also receive GitHub artifact attestations.
 - macOS: amd64, arm64
 - Linux: amd64, arm64
 - Windows: amd64, arm64
