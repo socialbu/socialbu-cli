@@ -9,7 +9,7 @@ before:
 
 builds:
   - id: socialbu
-    main: ./main.go
+    main: ./cmd/socialbu
     binary: socialbu
     env:
       - CGO_ENABLED=0

@@ -3,6 +3,6 @@ dist/
 *.tgz
 .env
 coverage.out
-socialbu
-socialbu.exe
+/socialbu
+/socialbu.exe
 artifacts/samples/

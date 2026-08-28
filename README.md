@@ -44,7 +44,7 @@ irm https://raw.githubusercontent.com/socialbu/socialbu-cli/main/scripts/install
 If you already have Go installed:
 
 ```bash
-go install github.com/socialbu/socialbu-cli@latest
+go install github.com/socialbu/socialbu-cli/cmd/socialbu@latest
 ```
 
 ### Homebrew
