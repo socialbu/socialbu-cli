@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/usamaejaz/socialbu-cli/internal/output"
@@ -22,9 +22,13 @@ func newAIGenerateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "generate",
 		Short: "Generate new AI content from a topic",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if contentType == "" || topic == "" || accountID <= 0 {
+			if strings.TrimSpace(topic) == "" || accountID <= 0 {
 				return fmt.Errorf("--type, --topic, and --account are required")
+			}
+			if err := validateChoice(contentType, "--type", "tweet", "linkedin_post", "instagram_caption", "generic"); err != nil {
+				return err
 			}
 			cli, err := apiClient()
 			if err != nil {
@@ -35,7 +39,7 @@ func newAIGenerateCmd() *cobra.Command {
 				payload["team_id"] = teamID
 			}
 			var resp map[string]any
-			if err := cli.Request(context.Background(), "POST", "/generated_content", nil, payload, &resp); err != nil {
+			if err := cli.Request(cmd.Context(), "POST", "/generated_content", nil, payload, &resp); err != nil {
 				return err
 			}
 			return renderAIResponse(resp)
@@ -53,6 +57,7 @@ func newAIGenerateFromPostCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "from-post",
 		Short: "Generate AI content from an existing post",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if postID <= 0 {
 				return fmt.Errorf("--post is required")
@@ -61,8 +66,9 @@ func newAIGenerateFromPostCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			payload := map[string]any{"post_id": postID}
 			var resp map[string]any
-			if err := cli.Request(context.Background(), "POST", fmt.Sprintf("/posts/%d/generate_content", postID), nil, nil, &resp); err != nil {
+			if err := cli.Request(cmd.Context(), "POST", "/generated_content/generate_by_post", nil, payload, &resp); err != nil {
 				return err
 			}
 			return renderAIResponse(resp)
@@ -78,6 +84,7 @@ func newAIAutocompleteCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "autocomplete",
 		Short: "Autocomplete a partial caption or post body",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if accountID <= 0 {
 				return fmt.Errorf("--account is required")
@@ -94,7 +101,7 @@ func newAIAutocompleteCmd() *cobra.Command {
 				payload["team_id"] = teamID
 			}
 			var resp map[string]any
-			if err := cli.Request(context.Background(), "POST", "/generated_content/autocomplete_post", nil, payload, &resp); err != nil {
+			if err := cli.Request(cmd.Context(), "POST", "/generated_content/autocomplete_post", nil, payload, &resp); err != nil {
 				return err
 			}
 			return renderAIResponse(resp)

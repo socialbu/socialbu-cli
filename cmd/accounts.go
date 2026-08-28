@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -24,7 +23,11 @@ func newAccountsCmd() *cobra.Command {
 	listCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List accounts",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateChoice(accountType, "--type", "all", "user", "shared"); err != nil {
+				return err
+			}
 			cli, err := apiClient()
 			if err != nil {
 				return err
@@ -34,8 +37,11 @@ func newAccountsCmd() *cobra.Command {
 				q.Add("type", accountType)
 			}
 			var raw any
-			if err := cli.Request(context.Background(), "GET", "/accounts", q, nil, &raw); err != nil {
+			if err := cli.Request(cmd.Context(), "GET", "/accounts", q, nil, &raw); err != nil {
 				return err
+			}
+			if jsonOutput {
+				return output.JSON(raw)
 			}
 			accounts := make([]account, 0)
 			switch v := raw.(type) {
@@ -48,9 +54,9 @@ func newAccountsCmd() *cobra.Command {
 					accounts = append(accounts, account{
 						ID:       output.IntFromMap(m, "id"),
 						Name:     output.StringFromMap(m, "name"),
-						Platform: output.StringFromMap(m, "provider", "platform"),
+						Platform: output.StringFromMap(m, "provider", "platform", "_type"),
 						Type:     output.StringFromMap(m, "type", "account_type"),
-						Status:   output.StringFromMap(m, "status"),
+						Status:   accountStatus(m),
 					})
 				}
 			case map[string]any:
@@ -59,14 +65,11 @@ func newAccountsCmd() *cobra.Command {
 					accounts = append(accounts, account{
 						ID:       output.IntFromMap(m, "id"),
 						Name:     output.StringFromMap(m, "name"),
-						Platform: output.StringFromMap(m, "provider", "platform"),
+						Platform: output.StringFromMap(m, "provider", "platform", "_type"),
 						Type:     output.StringFromMap(m, "type", "account_type"),
-						Status:   output.StringFromMap(m, "status"),
+						Status:   accountStatus(m),
 					})
 				}
-			}
-			if jsonOutput {
-				return output.JSON(map[string]any{"data": accounts})
 			}
 			rows := make([][]string, 0, len(accounts))
 			for _, a := range accounts {
@@ -81,18 +84,31 @@ func newAccountsCmd() *cobra.Command {
 	cmd.AddCommand(&cobra.Command{
 		Use:   "get <id>",
 		Short: "Get account details",
-		Args:  cobra.ExactArgs(1),
+		Args:  exactPositiveIDArg("account ID"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli, err := apiClient()
 			if err != nil {
 				return err
 			}
 			var resp map[string]any
-			if err := cli.Request(context.Background(), "GET", fmt.Sprintf("/accounts/%s", args[0]), nil, nil, &resp); err != nil {
+			if err := cli.Request(cmd.Context(), "GET", fmt.Sprintf("/accounts/%s", args[0]), nil, nil, &resp); err != nil {
 				return err
 			}
 			return output.JSON(resp)
 		},
 	})
 	return cmd
+}
+
+func accountStatus(item map[string]any) string {
+	if status := output.StringFromMap(item, "status"); status != "" {
+		return status
+	}
+	if active, ok := item["active"].(bool); ok {
+		if active {
+			return "active"
+		}
+		return "inactive"
+	}
+	return ""
 }

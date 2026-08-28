@@ -157,6 +157,26 @@ func TestRenderAnalyticsEngagementTrendHandlesNestedSeries(t *testing.T) {
 	}
 }
 
+func TestRenderAnalyticsFollowersGrowthUsesProductionTotal(t *testing.T) {
+	jsonOutput = false
+	resp := map[string]any{
+		"data": []any{
+			map[string]any{"date": "2026-08-28", "total_followers": 125},
+		},
+	}
+
+	out := captureStdout(t, func() {
+		if err := renderAnalyticsFollowersGrowth(resp); err != nil {
+			t.Fatalf("render: %v", err)
+		}
+	})
+	for _, want := range []string{"DATE", "FOLLOWERS", "2026-08-28", "125"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("expected output to contain %q, got:\n%s", want, out)
+		}
+	}
+}
+
 func TestRenderAnalyticsTeamActivityHandlesNestedActorName(t *testing.T) {
 	jsonOutput = false
 	resp := map[string]any{
@@ -287,6 +307,33 @@ func TestRenderAnalyticsTeamMetricsHandlesMemberAndMetricMaps(t *testing.T) {
 	}
 }
 
+func TestRenderAnalyticsTeamMetricsUsesProductionColumns(t *testing.T) {
+	jsonOutput = false
+	resp := map[string]any{
+		"data": []any{
+			map[string]any{
+				"member_id":         13,
+				"member_name":       "Usama",
+				"total_engagements": 9,
+				"scheduled_posts":   []any{map[string]any{"count": 2}, map[string]any{"count": 3}},
+				"published_posts":   []any{map[string]any{"count": 4}},
+				"rejected_posts":    []any{},
+			},
+		},
+	}
+
+	out := captureStdout(t, func() {
+		if err := renderAnalyticsTeamMetrics(resp); err != nil {
+			t.Fatalf("render: %v", err)
+		}
+	})
+	for _, want := range []string{"MEMBER", "ENGAGEMENTS", "SCHEDULED", "PUBLISHED", "REJECTED", "Usama", "9", "5", "4", "0"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("expected output to contain %q, got:\n%s", want, out)
+		}
+	}
+}
+
 func TestRenderCurationDetailHandlesGraphNodeTopics(t *testing.T) {
 	jsonOutput = false
 	item := map[string]any{
@@ -386,6 +433,48 @@ func TestRenderCurationHandlesTopLevelTopicArray(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Fatalf("expected output to contain %q, got:\n%s", want, out)
 		}
+	}
+}
+
+func TestRenderCurationUsesProductionAuthorsField(t *testing.T) {
+	jsonOutput = false
+	resp := map[string]any{
+		"items": []any{
+			map[string]any{"id": 1, "title": "One", "authors": "Author One"},
+			map[string]any{"id": 2, "title": "Two", "authors": "Author Two"},
+		},
+	}
+
+	out := captureStdout(t, func() {
+		if err := renderCuration(resp); err != nil {
+			t.Fatalf("render: %v", err)
+		}
+	})
+	for _, want := range []string{"Author One", "Author Two"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("expected output to contain %q, got:\n%s", want, out)
+		}
+	}
+}
+
+func TestEmptyCollectionsRenderHonestEmptyStates(t *testing.T) {
+	jsonOutput = false
+	notifications := captureStdout(t, func() {
+		if err := renderNotifications(map[string]any{"items": []any{}}); err != nil {
+			t.Fatalf("render notifications: %v", err)
+		}
+	})
+	if !strings.Contains(notifications, "No notifications.") {
+		t.Fatalf("notification output = %q", notifications)
+	}
+
+	curation := captureStdout(t, func() {
+		if err := renderCuration(map[string]any{"items": []any{}}); err != nil {
+			t.Fatalf("render curation: %v", err)
+		}
+	})
+	if !strings.Contains(curation, "No curation items.") {
+		t.Fatalf("curation output = %q", curation)
 	}
 }
 

@@ -22,10 +22,10 @@ func newConfigCmd() *cobra.Command {
 		Short: "Store API key",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg.APIKey = args[0]
-			if err := config.Save(cfg); err != nil {
+			if err := config.SetAPIKey(args[0]); err != nil {
 				return err
 			}
+			cfg = config.Current()
 			fmt.Fprintln(cmd.OutOrStdout(), "API key saved")
 			return nil
 		},
@@ -36,10 +36,10 @@ func newConfigCmd() *cobra.Command {
 		Short: "Store API base URL",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg.BaseURL = args[0]
-			if err := config.Save(cfg); err != nil {
+			if err := config.SetBaseURL(args[0]); err != nil {
 				return err
 			}
+			cfg = config.Current()
 			fmt.Fprintln(cmd.OutOrStdout(), "Base URL saved")
 			return nil
 		},
@@ -48,6 +48,7 @@ func newConfigCmd() *cobra.Command {
 	cmd.AddCommand(&cobra.Command{
 		Use:   "show",
 		Short: "Show effective config",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			values := map[string]string{
 				"api_key_set": fmt.Sprintf("%t", cfg.APIKey != ""),
@@ -64,10 +65,12 @@ func newConfigCmd() *cobra.Command {
 	cmd.AddCommand(&cobra.Command{
 		Use:   "reset",
 		Short: "Reset config",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := config.Reset(); err != nil {
 				return err
 			}
+			cfg = config.Current()
 			fmt.Fprintln(cmd.OutOrStdout(), "Config reset")
 			return nil
 		},

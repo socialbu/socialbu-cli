@@ -22,12 +22,13 @@ func newCurationTopicsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "topics",
 		Short: "List curation topics",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			q := url.Values{}
 			if query != "" {
 				q.Set("q", query)
 			}
-			return curationGetTopics(q)
+			return curationGetTopics(cmd.Context(), q)
 		},
 	}
 	cmd.Flags().StringVar(&query, "query", "", "topic search query")
@@ -41,7 +42,14 @@ func newCurationItemsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "items",
 		Short: "List curated content items",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if page < 0 || perPage < 0 || feedID < 0 {
+				return fmt.Errorf("--page, --per-page, and --feed-id cannot be negative")
+			}
+			if err := validateOptionalDateRange(from, to); err != nil {
+				return err
+			}
 			q := url.Values{}
 			if page > 0 {
 				q.Set("page", fmt.Sprintf("%d", page))
@@ -67,7 +75,7 @@ func newCurationItemsCmd() *cobra.Command {
 			for _, topic := range topics {
 				q.Add("topics[]", topic)
 			}
-			return curationGet("/curation/items", q)
+			return curationGet(cmd.Context(), "/curation/items", q)
 		},
 	}
 	cmd.Flags().IntVar(&page, "page", 0, "page number")
@@ -85,32 +93,32 @@ func newCurationGetItemCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "get <id>",
 		Short: "Get one curation item",
-		Args:  cobra.ExactArgs(1),
+		Args:  exactPositiveIDArg("curation item ID"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return curationGet(fmt.Sprintf("/curation/items/%s", args[0]), nil)
+			return curationGet(cmd.Context(), fmt.Sprintf("/curation/items/%s", args[0]), nil)
 		},
 	}
 }
 
-func curationGet(endpoint string, query url.Values) error {
+func curationGet(ctx context.Context, endpoint string, query url.Values) error {
 	cli, err := apiClient()
 	if err != nil {
 		return err
 	}
 	var resp map[string]any
-	if err := cli.Request(context.Background(), "GET", endpoint, query, nil, &resp); err != nil {
+	if err := cli.Request(ctx, "GET", endpoint, query, nil, &resp); err != nil {
 		return err
 	}
 	return renderCuration(resp)
 }
 
-func curationGetTopics(query url.Values) error {
+func curationGetTopics(ctx context.Context, query url.Values) error {
 	cli, err := apiClient()
 	if err != nil {
 		return err
 	}
 	var resp any
-	if err := cli.Request(context.Background(), "GET", "/curation/topics", query, nil, &resp); err != nil {
+	if err := cli.Request(ctx, "GET", "/curation/topics", query, nil, &resp); err != nil {
 		return err
 	}
 	return renderCurationAny(resp)
@@ -151,6 +159,12 @@ func renderCuration(resp map[string]any) error {
 	if data := output.MapFromMap(resp, "data"); data != nil {
 		return renderCurationDetail(data)
 	}
+	for _, key := range []string{"items", "topics", "results"} {
+		if _, exists := resp[key]; exists {
+			fmt.Println("No curation items.")
+			return nil
+		}
+	}
 	return output.JSON(resp)
 }
 
@@ -176,7 +190,7 @@ func renderCurationDetail(item map[string]any) error {
 
 func curationSource(item map[string]any) string {
 	return output.FirstNonEmpty(
-		output.StringFromMap(item, "author", "feed_name", "publication"),
+		output.StringFromMap(item, "author", "authors", "feed_name", "publication"),
 		output.StringFromNestedMap(item, []string{"feed", "name"}, []string{"source", "name"}, []string{"author", "name"}),
 	)
 }

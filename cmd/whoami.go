@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"context"
-
 	"github.com/spf13/cobra"
 	"github.com/usamaejaz/socialbu-cli/internal/output"
 )
@@ -11,13 +9,14 @@ func newWhoamiCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "whoami",
 		Short: "Show the authenticated user",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli, err := apiClient()
 			if err != nil {
 				return err
 			}
 			var resp map[string]any
-			if err := cli.Request(context.Background(), "GET", "/user", nil, nil, &resp); err != nil {
+			if err := cli.Request(cmd.Context(), "GET", "/user", nil, nil, &resp); err != nil {
 				return err
 			}
 			if jsonOutput {

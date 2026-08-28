@@ -4,7 +4,7 @@ project_name: socialbu
 
 before:
   hooks:
-    - go mod tidy
+    - go mod verify
     - go test ./...
 
 builds:

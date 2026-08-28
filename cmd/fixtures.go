@@ -24,6 +24,7 @@ func newFixturesCaptureCmd() *cobra.Command {
 		Use:   "capture",
 		Short: "Print a ready-to-run fixture capture script",
 		Long:  "Prints a deterministic shell script that captures the current fixture set into artifacts/samples. Requires a valid SocialBu API key.",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if strings.TrimSpace(outDir) == "" {
 				outDir = "artifacts/samples"
@@ -32,7 +33,7 @@ func newFixturesCaptureCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			script := buildFixtureCaptureScript(absOutDir)
+			script := buildFixtureCaptureScript(filepath.ToSlash(absOutDir))
 			fmt.Fprintln(cmd.OutOrStdout(), script)
 			return nil
 		},
@@ -47,6 +48,10 @@ func buildFixtureCaptureScript(outDir string) string {
 		name string
 		line string
 	}{
+		{"whoami", fmt.Sprintf("%s whoami --json > %s/whoami.json", cliCmd, shellQuote(outDir))},
+		{"accounts-list", fmt.Sprintf("%s account list --json > %s/accounts-list.json", cliCmd, shellQuote(outDir))},
+		{"posts-list", fmt.Sprintf("%s post list --json > %s/posts-list.json", cliCmd, shellQuote(outDir))},
+		{"teams-list", fmt.Sprintf("%s team list --json > %s/teams-list.json", cliCmd, shellQuote(outDir))},
 		{"notifications-list", fmt.Sprintf("%s notifications list --json > %s/notifications-list.json", cliCmd, shellQuote(outDir))},
 		{"notifications-unread", fmt.Sprintf("%s notifications unread --json > %s/notifications-unread.json", cliCmd, shellQuote(outDir))},
 		{"notifications-get", fmt.Sprintf("# %s notifications get <id> --json > %s/notifications-get-<id>.json", cliCmd, shellQuote(outDir))},
@@ -57,7 +62,7 @@ func buildFixtureCaptureScript(outDir string) string {
 		{"analytics-stats", fmt.Sprintf("%s analytics stats --json > %s/analytics-stats.json", cliCmd, shellQuote(outDir))},
 		{"analytics-team-activity", fmt.Sprintf("%s analytics team-activity --json > %s/analytics-team-activity.json", cliCmd, shellQuote(outDir))},
 		{"analytics-team-metrics", fmt.Sprintf("# %s analytics team-metrics --start YYYY-MM-DD --end YYYY-MM-DD --metrics posts,approvals --json > %s/analytics-team-metrics.json", cliCmd, shellQuote(outDir))},
-		{"ai-autocomplete", fmt.Sprintf("%s ai autocomplete --content 'Draft social caption about AI scheduling' --json > %s/ai-autocomplete.json", cliCmd, shellQuote(outDir))},
+		{"ai-autocomplete", fmt.Sprintf("if [[ -n \"$account_id\" ]]; then\n  %s ai autocomplete --content 'Draft social caption about AI scheduling' --account \"$account_id\" --json > %s/ai-autocomplete.json\nelse\n  echo 'Skipping ai-autocomplete: no social account is available.' >&2\nfi", cliCmd, shellQuote(outDir))},
 		{"ai-generate", fmt.Sprintf("# %s ai generate --type generic --topic 'Productivity tips for social media managers' --account <id> --json > %s/ai-generate.json", cliCmd, shellQuote(outDir))},
 	}
 
@@ -89,6 +94,22 @@ func buildFixtureCaptureScript(outDir string) string {
 	b.WriteString("  echo 'SOCIALBU_API_KEY is not set in the environment or ~/.socialbu/config.json. Run socialbu config set-key <key> or export SOCIALBU_API_KEY first.' >&2\n")
 	b.WriteString("  exit 1\n")
 	b.WriteString("fi\n\n")
+	b.WriteString("accounts_file=$(mktemp)\n")
+	b.WriteString("trap 'rm -f \"$accounts_file\"' EXIT\n")
+	b.WriteString(fmt.Sprintf("%s account list --json > \"$accounts_file\"\n", cliCmd))
+	b.WriteString("account_id=$(python3 - \"$accounts_file\" <<'PY'\n")
+	b.WriteString("import json, sys\n")
+	b.WriteString("with open(sys.argv[1], encoding='utf-8') as handle:\n")
+	b.WriteString("    data = json.load(handle)\n")
+	b.WriteString("if isinstance(data, dict):\n")
+	b.WriteString("    items = data.get('items') or data.get('data') or data.get('accounts') or []\n")
+	b.WriteString("elif isinstance(data, list):\n")
+	b.WriteString("    items = data\n")
+	b.WriteString("else:\n")
+	b.WriteString("    items = []\n")
+	b.WriteString("print(items[0].get('id', '') if items else '')\n")
+	b.WriteString("PY\n")
+	b.WriteString(")\n\n")
 	for _, command := range commands {
 		b.WriteString(fmt.Sprintf("echo 'Capturing %s'\n", command.name))
 		b.WriteString(command.line)

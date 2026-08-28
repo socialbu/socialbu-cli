@@ -31,30 +31,32 @@ jobs:
 
       - name: Create release tag for manual dispatch
         if: github.event_name == 'workflow_dispatch'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          if ! printf '%s\n' "${{ inputs.tag }}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+          if ! printf '%s\n' "$RELEASE_TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
             echo "Tag must look like vMAJOR.MINOR.PATCH" >&2
             exit 1
           fi
 
-          existing_tag=$(git ls-remote --tags origin "refs/tags/${{ inputs.tag }}" | awk '{print $1}')
+          existing_tag=$(git ls-remote --tags origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')
           if [ -n "$existing_tag" ]; then
-            git fetch --tags origin "refs/tags/${{ inputs.tag }}:refs/tags/${{ inputs.tag }}"
-            tag_target=$(git rev-list -n 1 "${{ inputs.tag }}")
+            git fetch --tags origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+            tag_target=$(git rev-list -n 1 "$RELEASE_TAG")
             head_target=$(git rev-parse HEAD)
             if [ "$tag_target" = "$head_target" ]; then
-              echo "Tag ${{ inputs.tag }} already points to $head_target; continuing"
+              echo "Tag $RELEASE_TAG already points to $head_target; continuing"
               exit 0
             fi
-            echo "Tag ${{ inputs.tag }} already exists on origin but points to $tag_target, not $head_target" >&2
+            echo "Tag $RELEASE_TAG already exists on origin but points to $tag_target, not $head_target" >&2
             exit 1
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "${{ inputs.tag }}" -m "${{ inputs.tag }}"
-          git push origin "refs/tags/${{ inputs.tag }}"
+          git tag -a "$RELEASE_TAG" -m "$RELEASE_TAG"
+          git push origin "refs/tags/$RELEASE_TAG"
 
       - name: Setup Go
         uses: actions/setup-go@v6
@@ -64,6 +66,9 @@ jobs:
 
       - name: Run tests
         run: go test ./...
+
+      - name: Vet
+        run: go vet ./...
 
       - name: GoReleaser
         uses: goreleaser/goreleaser-action@v6

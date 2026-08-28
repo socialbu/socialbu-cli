@@ -37,6 +37,7 @@ func newMediaUploadCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "upload",
 		Short: "Upload a local file through SocialBu's signed URL flow",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if strings.TrimSpace(filePath) == "" {
 				return fmt.Errorf("--file is required")
@@ -44,6 +45,9 @@ func newMediaUploadCmd() *cobra.Command {
 			info, err := os.Stat(filePath)
 			if err != nil {
 				return err
+			}
+			if !info.Mode().IsRegular() {
+				return fmt.Errorf("--file must point to a regular file")
 			}
 			if mimeType == "" {
 				mimeType = detectMimeType(filePath)
@@ -54,14 +58,17 @@ func newMediaUploadCmd() *cobra.Command {
 			}
 			payload := map[string]any{"name": filepath.Base(filePath), "mime_type": mimeType}
 			var initResp mediaUploadInitResponse
-			if err := cli.Request(context.Background(), "POST", "/upload_media", nil, payload, &initResp); err != nil {
+			if err := cli.Request(cmd.Context(), "POST", "/upload_media", nil, payload, &initResp); err != nil {
 				return err
+			}
+			if strings.TrimSpace(initResp.SignedURL) == "" || strings.TrimSpace(initResp.Key) == "" {
+				return fmt.Errorf("media upload initialization response is missing signed_url or key")
 			}
 			if err := putSignedMedia(cmd.Context(), initResp.SignedURL, filePath, mimeType, info.Size()); err != nil {
 				return err
 			}
 			var statusResp map[string]any
-			if err := cli.Request(context.Background(), "GET", "/upload_media/status", addOptionalString(url.Values{}, "key", initResp.Key), nil, &statusResp); err != nil {
+			if err := cli.Request(cmd.Context(), "GET", "/upload_media/status", addOptionalString(url.Values{}, "key", initResp.Key), nil, &statusResp); err != nil {
 				return err
 			}
 			result := map[string]any{
@@ -69,7 +76,6 @@ func newMediaUploadCmd() *cobra.Command {
 				"mime_type":     initResp.MimeType,
 				"key":           initResp.Key,
 				"secure_key":    initResp.SecureKey,
-				"signed_url":    initResp.SignedURL,
 				"status_result": statusResp,
 			}
 			return renderMediaUpload(result)
@@ -85,6 +91,7 @@ func newMediaStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "Check uploaded media status and retrieve upload token",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if key == "" {
 				return fmt.Errorf("--key is required")
@@ -94,7 +101,7 @@ func newMediaStatusCmd() *cobra.Command {
 				return err
 			}
 			var resp map[string]any
-			if err := cli.Request(context.Background(), "GET", "/upload_media/status", addOptionalString(url.Values{}, "key", key), nil, &resp); err != nil {
+			if err := cli.Request(cmd.Context(), "GET", "/upload_media/status", addOptionalString(url.Values{}, "key", key), nil, &resp); err != nil {
 				return err
 			}
 			return renderMediaStatus(resp)
@@ -116,8 +123,8 @@ func putSignedMedia(ctx context.Context, signedURL, filePath, mimeType string, s
 		return fmt.Errorf("build upload request: %w", err)
 	}
 	req.Header.Set("Content-Type", mimeType)
-	req.Header.Set("Content-Length", fmt.Sprintf("%d", size))
 	req.Header.Set("x-amz-acl", "private")
+	req.ContentLength = size
 
 	resp, err := (&http.Client{Timeout: mediaUploadTimeout}).Do(req)
 	if err != nil {

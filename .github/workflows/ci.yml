@@ -1,0 +1,61 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run tests
+        run: go test -shuffle=on -count=1 ./...
+
+      - name: Build
+        run: go build ./...
+
+      - name: Run race and coverage tests
+        if: runner.os == 'Linux'
+        run: go test -race -shuffle=on -count=1 -coverprofile=coverage.out ./...
+
+      - name: Report coverage
+        if: runner.os == 'Linux'
+        run: |
+          report=$(go tool cover -func=coverage.out)
+          printf '%s\n' "$report"
+          total=$(printf '%s\n' "$report" | awk '/^total:/ {gsub(/%/, "", $3); print $3}')
+          awk -v total="$total" 'BEGIN { if (total + 0 < 80) exit 1 }'
+
+      - name: Vet
+        if: runner.os == 'Linux'
+        run: go vet ./...
+
+      - name: Verify module files are tidy
+        if: runner.os == 'Linux'
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum

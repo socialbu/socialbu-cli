@@ -44,6 +44,6 @@ run_optional --json curation items --per-page 5
 run_optional --json analytics stats
 run_optional --json analytics followers
 run_optional --json analytics engagement-rate
-# /insights/inbox/unread-count exists in openapi.yaml but returns 404 in production as of 2026-05-06; keep the CLI command, but do not warn on live smoke until the endpoint is deployed.
+# This endpoint is documented but still returns 404 in production as of 2026-08-28.
 run_optional --json analytics automation-logs --limit 5
 run_optional --json analytics team-activity --limit 5

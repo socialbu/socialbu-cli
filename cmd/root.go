@@ -41,6 +41,7 @@ func newRootCmd() *cobra.Command {
 	versionCmd := &cobra.Command{
 		Use:   "version",
 		Short: "Show build metadata",
+		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Fprintf(cmd.OutOrStdout(), "socialbu %s\ncommit: %s\nbuilt: %s\n", buildInfo.Version, buildInfo.Commit, buildInfo.Date)
 		},

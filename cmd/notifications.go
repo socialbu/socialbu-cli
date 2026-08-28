@@ -31,9 +31,9 @@ func newNotificationsGetCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "get <id>",
 		Short: "Get a notification by ID",
-		Args:  cobra.ExactArgs(1),
+		Args:  exactPositiveIDArg("notification ID"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return notificationAction("GET", fmt.Sprintf("/notifications/%s", args[0]), nil)
+			return notificationAction(cmd.Context(), "GET", fmt.Sprintf("/notifications/%s", args[0]), nil)
 		},
 	}
 }
@@ -42,9 +42,9 @@ func newNotificationsMarkReadCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "mark-read <id>",
 		Short: "Mark a notification as read",
-		Args:  cobra.ExactArgs(1),
+		Args:  exactPositiveIDArg("notification ID"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return notificationAction("POST", fmt.Sprintf("/notifications/%s/mark_read", args[0]), map[string]any{})
+			return notificationAction(cmd.Context(), "POST", fmt.Sprintf("/notifications/%s/mark_read", args[0]), map[string]any{})
 		},
 	}
 }
@@ -53,9 +53,9 @@ func newNotificationsMarkUnreadCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "mark-unread <id>",
 		Short: "Mark a notification as unread",
-		Args:  cobra.ExactArgs(1),
+		Args:  exactPositiveIDArg("notification ID"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return notificationAction("POST", fmt.Sprintf("/notifications/%s/mark_unread", args[0]), map[string]any{})
+			return notificationAction(cmd.Context(), "POST", fmt.Sprintf("/notifications/%s/mark_unread", args[0]), map[string]any{})
 		},
 	}
 }
@@ -64,8 +64,9 @@ func newNotificationsMarkAllReadCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "mark-all-read",
 		Short: "Mark all notifications as read",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return notificationAction("POST", "/notifications/mark_all_read", map[string]any{})
+			return notificationAction(cmd.Context(), "POST", "/notifications/mark_all_read", map[string]any{})
 		},
 	}
 }
@@ -74,13 +75,14 @@ func notificationGetCmd(use, short, endpoint string) *cobra.Command {
 	return &cobra.Command{
 		Use:   use,
 		Short: short,
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return notificationAction("GET", endpoint, nil)
+			return notificationAction(cmd.Context(), "GET", endpoint, nil)
 		},
 	}
 }
 
-func notificationAction(method, endpoint string, body any) error {
+func notificationAction(ctx context.Context, method, endpoint string, body any) error {
 	cli, err := apiClient()
 	if err != nil {
 		return err
@@ -90,7 +92,7 @@ func notificationAction(method, endpoint string, body any) error {
 	if method == "POST" && endpoint == "/notifications/mark_all_read" {
 		out = nil
 	}
-	if err := cli.Request(context.Background(), method, endpoint, nil, body, out); err != nil {
+	if err := cli.Request(ctx, method, endpoint, nil, body, out); err != nil {
 		return err
 	}
 	if out == nil {
@@ -128,6 +130,10 @@ func renderNotifications(resp any) error {
 	}
 	if len(items) == 1 {
 		return renderNotificationDetail(items[0])
+	}
+	if isNotificationCollection(resp) {
+		fmt.Println("No notifications.")
+		return nil
 	}
 	return output.JSON(resp)
 }
@@ -179,13 +185,19 @@ func renderNotificationDetail(item map[string]any) error {
 func notificationsFromAny(resp any) []map[string]any {
 	if m, ok := resp.(map[string]any); ok {
 		if data := output.MapFromMap(m, "data"); data != nil {
-			if items := output.SliceFromMap(data, "notifications", "results", "data"); len(items) > 0 {
+			if items := output.SliceFromMap(data, "items", "notifications", "results", "data"); len(items) > 0 {
 				return items
+			}
+			if isNotificationCollection(data) {
+				return nil
 			}
 			return []map[string]any{data}
 		}
-		if items := output.SliceFromMap(m, "notifications", "results", "data"); len(items) > 0 {
+		if items := output.SliceFromMap(m, "items", "notifications", "results", "data"); len(items) > 0 {
 			return items
+		}
+		if isNotificationCollection(m) {
+			return nil
 		}
 		return []map[string]any{m}
 	}
@@ -199,4 +211,23 @@ func notificationsFromAny(resp any) []map[string]any {
 		return out
 	}
 	return nil
+}
+
+func isNotificationCollection(resp any) bool {
+	if _, ok := resp.([]any); ok {
+		return true
+	}
+	m, ok := resp.(map[string]any)
+	if !ok {
+		return false
+	}
+	for _, key := range []string{"items", "notifications", "results"} {
+		if _, exists := m[key]; exists {
+			return true
+		}
+	}
+	if data := output.MapFromMap(m, "data"); data != nil {
+		return isNotificationCollection(data)
+	}
+	return false
 }

@@ -35,16 +35,25 @@ func newAnalyticsPostsCountCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "posts-count",
 		Short: "Get date-wise published post counts",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if start == "" || end == "" {
-				return fmt.Errorf("--start and --end are required")
+			if err := validateDateRange(start, end); err != nil {
+				return err
+			}
+			if postType != "" {
+				if err := validateChoice(postType, "--post-type", "image", "video", "text"); err != nil {
+					return err
+				}
+			}
+			if err := validateAnalyticsFilters(accounts, team); err != nil {
+				return err
 			}
 			q := dateRangeQuery(start, end)
 			q = addOptionalString(q, "post_type", postType)
 			q = addOptionalInt(q, "team", team)
 			q = addIntSlice(q, "accounts", accounts)
 			var resp map[string]any
-			if err := analyticsRequest("/insights/posts/counts", q, &resp); err != nil {
+			if err := analyticsRequest(cmd.Context(), "/insights/posts/counts", q, &resp); err != nil {
 				return err
 			}
 			return renderAnalyticsPostsCount(resp)
@@ -64,9 +73,19 @@ func newAnalyticsPostsMetricsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "posts-metrics",
 		Short: "Get date-wise post metrics",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if start == "" || end == "" || strings.TrimSpace(postType) == "" || strings.TrimSpace(metrics) == "" {
-				return fmt.Errorf("--start, --end, --post-type, and --metrics are required")
+			if strings.TrimSpace(postType) == "" || strings.TrimSpace(metrics) == "" {
+				return fmt.Errorf("--post-type and --metrics are required")
+			}
+			if err := validateDateRange(start, end); err != nil {
+				return err
+			}
+			if err := validateChoice(postType, "--post-type", "image", "video", "text"); err != nil {
+				return err
+			}
+			if err := validateAnalyticsFilters(accounts, team); err != nil {
+				return err
 			}
 			q := dateRangeQuery(start, end)
 			q.Set("post_type", postType)
@@ -74,7 +93,7 @@ func newAnalyticsPostsMetricsCmd() *cobra.Command {
 			q = addOptionalInt(q, "team", team)
 			q = addIntSlice(q, "accounts", accounts)
 			var resp map[string]any
-			if err := analyticsRequest("/insights/posts/metrics", q, &resp); err != nil {
+			if err := analyticsRequest(cmd.Context(), "/insights/posts/metrics", q, &resp); err != nil {
 				return err
 			}
 			return output.JSON(resp)
@@ -95,16 +114,23 @@ func newAnalyticsTopPostsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "top-posts",
 		Short: "Get top posts ranked by metrics",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if start == "" || end == "" || strings.TrimSpace(metrics) == "" {
-				return fmt.Errorf("--start, --end, and --metrics are required")
+			if strings.TrimSpace(metrics) == "" {
+				return fmt.Errorf("--metrics is required")
+			}
+			if err := validateDateRange(start, end); err != nil {
+				return err
+			}
+			if err := validateAnalyticsFilters(accounts, team); err != nil {
+				return err
 			}
 			q := dateRangeQuery(start, end)
 			q.Set("metrics", metrics)
 			q = addOptionalInt(q, "team", team)
 			q = addIntSlice(q, "accounts", accounts)
 			var resp map[string]any
-			if err := analyticsRequest("/insights/posts/top_posts", q, &resp); err != nil {
+			if err := analyticsRequest(cmd.Context(), "/insights/posts/top_posts", q, &resp); err != nil {
 				return err
 			}
 			return output.JSON(resp)
@@ -125,9 +151,16 @@ func newAnalyticsAccountsMetricsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "accounts-metrics",
 		Short: "Get date-wise account metrics",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if start == "" || end == "" || strings.TrimSpace(metrics) == "" {
-				return fmt.Errorf("--start, --end, and --metrics are required")
+			if strings.TrimSpace(metrics) == "" {
+				return fmt.Errorf("--metrics is required")
+			}
+			if err := validateDateRange(start, end); err != nil {
+				return err
+			}
+			if err := validateAnalyticsFilters(accounts, team); err != nil {
+				return err
 			}
 			q := dateRangeQuery(start, end)
 			q.Set("metrics", metrics)
@@ -135,7 +168,7 @@ func newAnalyticsAccountsMetricsCmd() *cobra.Command {
 			q = addOptionalInt(q, "team", team)
 			q = addIntSlice(q, "accounts", accounts)
 			var resp map[string]any
-			if err := analyticsRequest("/insights/accounts/metrics", q, &resp); err != nil {
+			if err := analyticsRequest(cmd.Context(), "/insights/accounts/metrics", q, &resp); err != nil {
 				return err
 			}
 			return output.JSON(resp)
@@ -153,9 +186,10 @@ func newAnalyticsFollowersCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "followers",
 		Short: "Get total followers across accessible accounts",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var resp map[string]any
-			if err := analyticsRequest("/insights/accounts/followers", nil, &resp); err != nil {
+			if err := analyticsRequest(cmd.Context(), "/insights/accounts/followers", nil, &resp); err != nil {
 				return err
 			}
 			return renderAnalyticsStats(resp)
@@ -168,12 +202,13 @@ func newAnalyticsEngagementTrendCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "engagement-trend",
 		Short: "Get daily total engagement trend",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if start == "" || end == "" {
-				return fmt.Errorf("--start and --end are required")
+			if err := validateDateRange(start, end); err != nil {
+				return err
 			}
 			var resp map[string]any
-			if err := analyticsRequest("/insights/accounts/engagement/trend", dateRangeQuery(start, end), &resp); err != nil {
+			if err := analyticsRequest(cmd.Context(), "/insights/accounts/engagement/trend", dateRangeQuery(start, end), &resp); err != nil {
 				return err
 			}
 			return renderAnalyticsEngagementTrend(resp)
@@ -187,9 +222,10 @@ func newAnalyticsEngagementRateCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "engagement-rate",
 		Short: "Get total engagement rate across accessible accounts",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var resp map[string]any
-			if err := analyticsRequest("/insights/accounts/engagement/rate", nil, &resp); err != nil {
+			if err := analyticsRequest(cmd.Context(), "/insights/accounts/engagement/rate", nil, &resp); err != nil {
 				return err
 			}
 			return renderAnalyticsStats(resp)
@@ -199,11 +235,13 @@ func newAnalyticsEngagementRateCmd() *cobra.Command {
 
 func newAnalyticsInboxUnreadCountCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "inbox-unread-count",
-		Short: "Get open social inbox message count",
+		Use:    "inbox-unread-count",
+		Short:  "Get open social inbox message count",
+		Hidden: true, // The documented endpoint still returns 404 in production.
+		Args:   cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var resp map[string]any
-			if err := analyticsRequest("/insights/inbox/unread-count", nil, &resp); err != nil {
+			if err := analyticsRequest(cmd.Context(), "/insights/inbox/unread-count", nil, &resp); err != nil {
 				return err
 			}
 			return renderAnalyticsStats(resp)
@@ -216,13 +254,17 @@ func newAnalyticsAutomationLogsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "automation-logs",
 		Short: "Get recent automation activity logs",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if limit < 0 {
+				return fmt.Errorf("--limit cannot be negative")
+			}
 			q := url.Values{}
 			if limit > 0 {
 				q.Set("limit", fmt.Sprintf("%d", limit))
 			}
 			var resp map[string]any
-			if err := analyticsRequest("/insights/automations/logs", q, &resp); err != nil {
+			if err := analyticsRequest(cmd.Context(), "/insights/automations/logs", q, &resp); err != nil {
 				return err
 			}
 			return output.JSON(resp)
@@ -237,12 +279,13 @@ func newAnalyticsFollowersGrowthCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "followers-growth",
 		Short: "Get daily followers growth across accounts",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if start == "" || end == "" {
-				return fmt.Errorf("--start and --end are required")
+			if err := validateDateRange(start, end); err != nil {
+				return err
 			}
 			var resp map[string]any
-			if err := analyticsRequest("/insights/accounts/followers/growth", dateRangeQuery(start, end), &resp); err != nil {
+			if err := analyticsRequest(cmd.Context(), "/insights/accounts/followers/growth", dateRangeQuery(start, end), &resp); err != nil {
 				return err
 			}
 			return renderAnalyticsFollowersGrowth(resp)
@@ -259,16 +302,26 @@ func newAnalyticsTeamMetricsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "team-metrics",
 		Short: "Get team member performance metrics",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if start == "" || end == "" || strings.TrimSpace(metrics) == "" {
-				return fmt.Errorf("--start, --end, and --metrics are required")
+			if strings.TrimSpace(metrics) == "" {
+				return fmt.Errorf("--metrics is required")
+			}
+			if team <= 0 {
+				return fmt.Errorf("--team is required")
+			}
+			if err := validateDateRange(start, end); err != nil {
+				return err
+			}
+			if err := validateAnalyticsFilters(accounts, team); err != nil {
+				return err
 			}
 			q := dateRangeQuery(start, end)
 			q.Set("metrics", metrics)
 			q = addOptionalInt(q, "team", team)
 			q = addIntSlice(q, "accounts", accounts)
 			var resp map[string]any
-			if err := analyticsRequest("/insights/teams/metrics", q, &resp); err != nil {
+			if err := analyticsRequest(cmd.Context(), "/insights/teams/metrics", q, &resp); err != nil {
 				return err
 			}
 			return renderAnalyticsTeamMetrics(resp)
@@ -286,13 +339,17 @@ func newAnalyticsTeamActivityCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "team-activity",
 		Short: "Get recent team activity logs",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if limit < 0 {
+				return fmt.Errorf("--limit cannot be negative")
+			}
 			q := url.Values{}
 			if limit > 0 {
 				q.Set("limit", fmt.Sprintf("%d", limit))
 			}
 			var resp map[string]any
-			if err := analyticsRequest("/insights/teams/activity", q, &resp); err != nil {
+			if err := analyticsRequest(cmd.Context(), "/insights/teams/activity", q, &resp); err != nil {
 				return err
 			}
 			return renderAnalyticsTeamActivity(resp)
@@ -306,9 +363,10 @@ func newAnalyticsStatsCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "stats",
 		Short: "Get high-level user stats",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var resp map[string]any
-			if err := analyticsRequest("/insights/stats", nil, &resp); err != nil {
+			if err := analyticsRequest(cmd.Context(), "/insights/stats", nil, &resp); err != nil {
 				return err
 			}
 			return renderAnalyticsStats(resp)
@@ -316,12 +374,12 @@ func newAnalyticsStatsCmd() *cobra.Command {
 	}
 }
 
-func analyticsRequest(endpoint string, query url.Values, out any) error {
+func analyticsRequest(ctx context.Context, endpoint string, query url.Values, out any) error {
 	cli, err := apiClient()
 	if err != nil {
 		return err
 	}
-	return cli.Request(context.Background(), "GET", endpoint, query, nil, out)
+	return cli.Request(ctx, "GET", endpoint, query, nil, out)
 }
 
 func addDateRangeFlags(cmd *cobra.Command, start, end *string) {
@@ -355,6 +413,16 @@ func addIntSlice(q url.Values, key string, values []int) url.Values {
 		q.Add(key+"[]", fmt.Sprintf("%d", value))
 	}
 	return q
+}
+
+func validateAnalyticsFilters(accounts []int, team int) error {
+	if err := validatePositiveInts(accounts, "--accounts"); err != nil {
+		return err
+	}
+	if team < 0 {
+		return fmt.Errorf("--team cannot be negative")
+	}
+	return nil
 }
 
 func renderAnalyticsPostsCount(resp map[string]any) error {
@@ -417,10 +485,10 @@ func renderAnalyticsFollowersGrowth(resp map[string]any) error {
 	for _, item := range items {
 		rows = append(rows, []string{
 			output.FirstNonEmpty(output.StringFromMap(item, "date", "day", "label"), "-"),
-			output.FirstNonEmpty(output.StringFromMap(item, "followers", "growth", "value", "count"), "0"),
+			output.FirstNonEmpty(output.StringFromMap(item, "total_followers", "followers", "growth", "value", "count"), "0"),
 		})
 	}
-	output.Table([]string{"Date", "Followers Delta"}, rows)
+	output.Table([]string{"Date", "Followers"}, rows)
 	return nil
 }
 
@@ -436,6 +504,20 @@ func renderAnalyticsTeamMetrics(resp map[string]any) error {
 	}
 	if len(items) == 0 {
 		return output.JSON(resp)
+	}
+	if _, productionShape := items[0]["member_id"]; productionShape {
+		rows := make([][]string, 0, len(items))
+		for _, item := range items {
+			rows = append(rows, []string{
+				output.FirstNonEmpty(output.StringFromMap(item, "member_name", "name"), "-"),
+				output.FirstNonEmpty(output.StringFromMap(item, "total_engagements"), "0"),
+				fmt.Sprintf("%d", sumMetricCounts(item["scheduled_posts"])),
+				fmt.Sprintf("%d", sumMetricCounts(item["published_posts"])),
+				fmt.Sprintf("%d", sumMetricCounts(item["rejected_posts"])),
+			})
+		}
+		output.Table([]string{"Member", "Engagements", "Scheduled", "Published", "Rejected"}, rows)
+		return nil
 	}
 	rows := make([][]string, 0, len(items))
 	for _, item := range items {
@@ -454,6 +536,20 @@ func renderAnalyticsTeamMetrics(resp map[string]any) error {
 	}
 	output.Table([]string{"Member", "Metric"}, rows)
 	return nil
+}
+
+func sumMetricCounts(value any) int {
+	items, ok := value.([]any)
+	if !ok {
+		return 0
+	}
+	total := 0
+	for _, item := range items {
+		if entry, ok := item.(map[string]any); ok {
+			total += output.IntFromMap(entry, "count", "value")
+		}
+	}
+	return total
 }
 
 func renderAnalyticsTeamActivity(resp map[string]any) error {

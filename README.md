@@ -10,7 +10,7 @@ The current CLI supports:
 - `account list|get`
 - `post list|get|create`
 - `team list|create|delete`
-- `analytics posts-count|posts-metrics|top-posts|accounts-metrics|followers|followers-growth|engagement-rate|engagement-trend|inbox-unread-count|automation-logs|team-metrics|team-activity|stats`
+- `analytics posts-count|posts-metrics|top-posts|accounts-metrics|followers|followers-growth|engagement-rate|engagement-trend|automation-logs|team-metrics|team-activity|stats`
 - `ai generate|from-post|autocomplete`
 - `notifications list|unread|get|mark-read|mark-unread|mark-all-read`
 - `curation topics|items|get`
@@ -37,8 +37,10 @@ socialbu config set-key <your-api-key>
 socialbu whoami
 socialbu account list
 socialbu post list --type scheduled
-socialbu post create --accounts 123 --content "Hello" --publish-at "2026-04-21 10:00:00"
+socialbu post create --accounts 123 --content "Hello" --publish-at "2030-01-01 10:00:00" --draft
 ```
+
+`publish-at` is always UTC and must use `YYYY-MM-DD HH:MM:SS`. Keep `--draft` while testing post creation.
 
 Supported environment variables:
 
@@ -47,11 +49,37 @@ SOCIALBU_API_KEY
 SOCIALBU_BASE_URL
 ```
 
+Environment variables override stored config for the current process and are never copied into `~/.socialbu/config.json`. On macOS and Linux, the CLI stores that file with mode `0600` inside a `0700` directory.
+
+Common write commands:
+
+```bash
+socialbu team create "Marketing" --accounts 123,456
+socialbu media upload --file ./image.png
+socialbu ai autocomplete --account 123 --content "Draft caption"
+```
+
 ## Build from source
 
 ```bash
 go build ./...
 ```
+
+## Test
+
+```bash
+go test -shuffle=on -count=1 ./...
+go vet ./...
+go build ./...
+```
+
+On a CGO-enabled Linux or macOS environment, also run:
+
+```bash
+go test -race ./...
+```
+
+CI runs tests and builds on Linux, macOS, and Windows. Linux also runs the race detector, enforces at least 80% statement coverage, runs vet, and checks module tidiness.
 
 ## Releases
 
@@ -88,4 +116,4 @@ bash /tmp/socialbu-capture.sh
 
 The generated script resolves the repo root automatically, writes the current fixture set into `artifacts/samples/`, and reuses `~/.socialbu/config.json` when `SOCIALBU_API_KEY` is not exported.
 
-The smoke workflow runs `./scripts/smoke-readonly.sh` when the `SOCIALBU_TEST_KEY` repository secret is configured. The suite covers non-mutating identity, accounts, posts, teams, notifications, curation, analytics, inbox-count, and automation-log commands.
+The smoke workflow runs `./scripts/smoke-readonly.sh` when the `SOCIALBU_TEST_KEY` repository secret is configured. The suite covers non-mutating identity, accounts, posts, teams, notifications, curation, and deployed analytics endpoints. It never creates or publishes content.

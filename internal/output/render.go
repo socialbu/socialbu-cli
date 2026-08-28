@@ -1,6 +1,7 @@
 package output
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -85,6 +86,10 @@ func IntFromMap(m map[string]any, keys ...string) int {
 			if n, err := strconv.Atoi(strings.TrimSpace(t)); err == nil {
 				return n
 			}
+		case json.Number:
+			if n, err := strconv.Atoi(t.String()); err == nil {
+				return n
+			}
 		}
 	}
 	return 0
@@ -105,7 +110,6 @@ func BoolFromMap(m map[string]any, keys ...string) bool {
 	}
 	return false
 }
-
 
 func MapFromMap(m map[string]any, keys ...string) map[string]any {
 	for _, key := range keys {
@@ -182,6 +186,10 @@ func JoinStrings(m map[string]any, keys ...string) string {
 			continue
 		}
 		switch t := value.(type) {
+		case string:
+			if text := strings.TrimSpace(t); text != "" {
+				return text
+			}
 		case []any:
 			parts := make([]string, 0, len(t))
 			for _, item := range t {

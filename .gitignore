@@ -2,3 +2,7 @@ node_modules/
 dist/
 *.tgz
 .env
+coverage.out
+socialbu
+socialbu.exe
+artifacts/samples/

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 	"sort"
-
-	"github.com/olekukonko/tablewriter"
+	"strings"
+	"text/tabwriter"
 )
 
 func JSON(v any) error {
@@ -16,12 +16,20 @@ func JSON(v any) error {
 }
 
 func Table(headers []string, rows [][]string) {
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader(headers)
-	for _, row := range rows {
-		table.Append(row)
+	writer := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+	upperHeaders := make([]string, len(headers))
+	for i, header := range headers {
+		upperHeaders[i] = strings.ToUpper(header)
 	}
-	table.Render()
+	fmt.Fprintln(writer, strings.Join(upperHeaders, "\t"))
+	for _, row := range rows {
+		clean := make([]string, len(row))
+		for i, cell := range row {
+			clean[i] = strings.NewReplacer("\t", " ", "\r", " ", "\n", " ").Replace(cell)
+		}
+		fmt.Fprintln(writer, strings.Join(clean, "\t"))
+	}
+	_ = writer.Flush()
 }
 
 func KeyValue(title string, values map[string]string) {

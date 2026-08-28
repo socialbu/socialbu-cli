@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -37,7 +38,7 @@ type ErrorResponse struct {
 func (c *Client) Request(ctx context.Context, method, endpoint string, query url.Values, body any, out any) error {
 	base, err := url.Parse(c.baseURL)
 	if err != nil {
-		return fmt.Errorf("parse base url: %w", err)
+		return fmt.Errorf("parse base URL: %w", err)
 	}
 	base.Path = path.Join(base.Path, strings.TrimLeft(endpoint, "/"))
 	if query != nil {
@@ -72,7 +73,12 @@ func (c *Client) Request(ctx context.Context, method, endpoint string, query url
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		payload, _ := io.ReadAll(resp.Body)
+		const maxErrorBody = 1 << 20
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBody+1))
+		truncated := len(payload) > maxErrorBody
+		if truncated {
+			payload = payload[:maxErrorBody]
+		}
 		apiErr := ErrorResponse{}
 		if json.Unmarshal(payload, &apiErr) == nil && (apiErr.Message != "" || apiErr.Error != "") {
 			msg := apiErr.Message
@@ -81,14 +87,23 @@ func (c *Client) Request(ctx context.Context, method, endpoint string, query url
 			}
 			return fmt.Errorf("api error (%s): %s", resp.Status, msg)
 		}
-		return fmt.Errorf("api error (%s): %s", resp.Status, strings.TrimSpace(string(payload)))
+		message := strings.TrimSpace(string(payload))
+		if message == "" {
+			return fmt.Errorf("api error (%s)", resp.Status)
+		}
+		if truncated {
+			message += "…"
+		}
+		return fmt.Errorf("api error (%s): %s", resp.Status, message)
 	}
 
 	if out == nil {
 		io.Copy(io.Discard, resp.Body)
 		return nil
 	}
-	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+	decoder := json.NewDecoder(resp.Body)
+	decoder.UseNumber()
+	if err := decoder.Decode(out); err != nil && !errors.Is(err, io.EOF) {
 		return fmt.Errorf("decode response: %w", err)
 	}
 	return nil

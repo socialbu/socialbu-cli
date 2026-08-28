@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/usamaejaz/socialbu-cli/internal/output"
@@ -16,10 +16,6 @@ type post struct {
 	Content   string `json:"content"`
 	Status    string `json:"status"`
 	PublishAt string `json:"publish_at"`
-}
-
-type postsResponse struct {
-	Data []post `json:"data"`
 }
 
 func newPostsCmd() *cobra.Command {
@@ -35,7 +31,13 @@ func newPostsListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List posts",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if postType != "" {
+				if err := validateChoice(postType, "--type", "scheduled", "awaiting_approval", "scheduled_or_awaiting_approval", "draft", "published"); err != nil {
+					return err
+				}
+			}
 			cli, err := apiClient()
 			if err != nil {
 				return err
@@ -44,22 +46,23 @@ func newPostsListCmd() *cobra.Command {
 			if postType != "" {
 				q.Set("type", postType)
 			}
-			var resp postsResponse
-			if err := cli.Request(context.Background(), "GET", "/posts", q, nil, &resp); err != nil {
+			var resp any
+			if err := cli.Request(cmd.Context(), "GET", "/posts", q, nil, &resp); err != nil {
 				return err
 			}
 			if jsonOutput {
 				return output.JSON(resp)
 			}
-			rows := make([][]string, 0, len(resp.Data))
-			for _, p := range resp.Data {
+			posts := postsFromAny(resp)
+			rows := make([][]string, 0, len(posts))
+			for _, p := range posts {
 				rows = append(rows, []string{strconv.Itoa(p.ID), p.Status, p.PublishAt, truncate(p.Content, 60)})
 			}
 			output.Table([]string{"ID", "Status", "Publish At", "Content"}, rows)
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&postType, "type", "", "filter by type (scheduled, published, failed, drafts)")
+	cmd.Flags().StringVar(&postType, "type", "", "filter by type: scheduled, awaiting_approval, scheduled_or_awaiting_approval, draft, or published")
 	return cmd
 }
 
@@ -67,14 +70,14 @@ func newPostsGetCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "get <id>",
 		Short: "Get post details",
-		Args:  cobra.ExactArgs(1),
+		Args:  exactPositiveIDArg("post ID"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli, err := apiClient()
 			if err != nil {
 				return err
 			}
 			var resp map[string]any
-			if err := cli.Request(context.Background(), "GET", fmt.Sprintf("/posts/%s", args[0]), nil, nil, &resp); err != nil {
+			if err := cli.Request(cmd.Context(), "GET", fmt.Sprintf("/posts/%s", args[0]), nil, nil, &resp); err != nil {
 				return err
 			}
 			return output.JSON(resp)
@@ -89,16 +92,20 @@ func newPostsCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create a post",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cli, err := apiClient()
-			if err != nil {
-				return err
-			}
 			if len(accounts) == 0 {
 				return fmt.Errorf("at least one --accounts is required")
 			}
-			if publishAt == "" {
-				return fmt.Errorf("--publish-at is required")
+			if err := validatePositiveInts(accounts, "--accounts"); err != nil {
+				return err
+			}
+			if err := validatePublishTime(publishAt, draft, time.Now()); err != nil {
+				return err
+			}
+			cli, err := apiClient()
+			if err != nil {
+				return err
 			}
 			payload := map[string]any{
 				"accounts":   accounts,
@@ -107,7 +114,7 @@ func newPostsCreateCmd() *cobra.Command {
 				"draft":      draft,
 			}
 			var resp map[string]any
-			if err := cli.Request(context.Background(), "POST", "/posts", nil, payload, &resp); err != nil {
+			if err := cli.Request(cmd.Context(), "POST", "/posts", nil, payload, &resp); err != nil {
 				return err
 			}
 			return output.JSON(resp)
@@ -122,8 +129,38 @@ func newPostsCreateCmd() *cobra.Command {
 
 func truncate(s string, n int) string {
 	s = strings.TrimSpace(strings.ReplaceAll(s, "\n", " "))
-	if len(s) <= n {
+	runes := []rune(s)
+	if len(runes) <= n {
 		return s
 	}
-	return s[:n-1] + "…"
+	if n <= 1 {
+		return "…"
+	}
+	return string(runes[:n-1]) + "…"
+}
+
+func postsFromAny(resp any) []post {
+	var items []map[string]any
+	switch value := resp.(type) {
+	case []any:
+		items = make([]map[string]any, 0, len(value))
+		for _, item := range value {
+			if entry, ok := item.(map[string]any); ok {
+				items = append(items, entry)
+			}
+		}
+	case map[string]any:
+		items = output.SliceFromMap(value, "items", "data", "posts")
+	}
+
+	posts := make([]post, 0, len(items))
+	for _, item := range items {
+		posts = append(posts, post{
+			ID:        output.IntFromMap(item, "id"),
+			Content:   output.StringFromMap(item, "content", "text"),
+			Status:    output.StringFromMap(item, "status"),
+			PublishAt: output.StringFromMap(item, "publish_at", "published_at"),
+		})
+	}
+	return posts
 }
