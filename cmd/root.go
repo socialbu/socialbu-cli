@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"runtime/debug"
 	"strings"
 
 	"github.com/socialbu/socialbu-cli/internal/client"
@@ -22,6 +23,11 @@ type BuildInfo struct {
 }
 
 func SetBuildInfo(version, commit, date string) {
+	if version == "dev" {
+		if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+			version = strings.TrimPrefix(info.Main.Version, "v")
+		}
+	}
 	buildInfo = BuildInfo{Version: version, Commit: commit, Date: date}
 }
 
