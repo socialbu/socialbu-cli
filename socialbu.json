@@ -1,19 +1,19 @@
 {
-    "version": "0.1.9",
+    "version": "0.1.10",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/socialbu/socialbu-cli/releases/download/v0.1.9/socialbu_0.1.9_windows_amd64.zip",
+            "url": "https://github.com/socialbu/socialbu-cli/releases/download/v0.1.10/socialbu_0.1.10_windows_amd64.zip",
             "bin": [
                 "socialbu.exe"
             ],
-            "hash": "1af6d669f602ab6397b3c57eeb34eca508c2ca9ebdfef48be23fc8f9d74c19cd"
+            "hash": "90a6e3e3ee04b9736291af931f8ad320e70993e2e95eede6be1345beef0ad1f0"
         },
         "arm64": {
-            "url": "https://github.com/socialbu/socialbu-cli/releases/download/v0.1.9/socialbu_0.1.9_windows_arm64.zip",
+            "url": "https://github.com/socialbu/socialbu-cli/releases/download/v0.1.10/socialbu_0.1.10_windows_arm64.zip",
             "bin": [
                 "socialbu.exe"
             ],
-            "hash": "69831fb1856cbc3954e42c53cb0be8e5f0b6695afe666affa54a1715c2180ecd"
+            "hash": "8d2cb1bf7d01a875e7c339d3ebca947468b9789b80a40604908d003eea905b45"
         }
     },
     "homepage": "https://socialbu.com/",
