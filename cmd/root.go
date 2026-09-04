@@ -104,7 +104,6 @@ func newRootCmd() *cobra.Command {
 	rootCmd.AddCommand(newNotificationsCmd())
 	rootCmd.AddCommand(newCurationCmd())
 	rootCmd.AddCommand(newMediaCmd())
-	rootCmd.AddCommand(newFixturesCmd())
 	return rootCmd
 }
 

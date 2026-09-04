@@ -56,7 +56,6 @@ func TestNoArgumentCommandsRejectUnexpectedArguments(t *testing.T) {
 		{"curation", "topics", "extra"},
 		{"media", "status", "extra"},
 		{"analytics", "stats", "extra"},
-		{"fixtures", "capture", "extra"},
 	}
 	for _, args := range tests {
 		if _, err := executeRoot(t, args...); err == nil {
