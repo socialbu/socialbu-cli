@@ -32,6 +32,12 @@ scoop bucket add socialbu https://github.com/socialbu/socialbu-cli
 scoop install socialbu/socialbu
 ```
 
+### Chocolatey
+
+```powershell
+choco install socialbu
+```
+
 ### Go
 
 ```bash
