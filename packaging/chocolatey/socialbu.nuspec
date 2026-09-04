@@ -8,6 +8,7 @@
     <title>SocialBu CLI</title>
     <authors>SocialBu</authors>
     <projectUrl>https://socialbu.com/</projectUrl>
+    <iconUrl>https://cdn.jsdelivr.net/gh/socialbu/socialbu-cli@v__VERSION__/packaging/chocolatey/icon.svg</iconUrl>
     <copyright>Copyright SocialBu</copyright>
     <licenseUrl>https://socialbu.com/about/terms</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
